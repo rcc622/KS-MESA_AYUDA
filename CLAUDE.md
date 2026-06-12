@@ -1,5 +1,9 @@
 # CLAUDE.md — Mesa de Ayuda KENET Solar
 
+> ⚠ **OBLIGATORIO antes de cualquier feature con lógica de negocio:** lee `docs/CONTEXTO_NEGOCIO.md` — define qué necesita cada área (Ventas, CxC, Levantamientos, PM, Gestoría CFE, CS, Soporte, Farmer, GO, cliente final), los candados de cobro, el modelo de mesa (nodos, L1-L3, SLAs P1-P4), KPIs homologados y el roadmap por fases.
+>
+> ⚠ **Si una regla de negocio NO está en CONTEXTO_NEGOCIO.md, NO la inventes.** Protocolo: (1) escribe la pregunta en `docs/PREGUNTAS_NEGOCIO.md` con el formato del buzón, (2) continúa la feature con lo que SÍ esté definido o déjala marcada TODO, (3) Cowork responde el buzón actualizando CONTEXTO_NEGOCIO.md. Nunca bloquees el desarrollo esperando la respuesta.
+
 ## Qué es este proyecto
 
 Plataforma operativa post-venta de KENET Solar (instaladora solar mexicana, ~60 empleados, 4 ciudades). Reemplaza Excels frágiles por un sistema único donde cada líder captura el avance de cada cliente. Hoy: MVP en piloto con Región 2 (TRC=Torreón, MVA=Monclova). Responsable: Randall (Director / Gobierno Operativo "GO"). Mantenimiento: Randall + Claude Code.

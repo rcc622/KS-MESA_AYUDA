@@ -22,12 +22,17 @@ begin
   if exists (select 1 from auth.users where email = p_email) then
     return 'YA EXISTE: ' || p_email;
   end if;
+  -- Las columnas de tokens van en '' (NO null): GoTrue truena con
+  -- "Database error querying schema" al hacer login si están en NULL.
   insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
-    email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new,
+    email_change_token_current, phone_change, phone_change_token, reauthentication_token)
   values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
     'authenticated', p_email, extensions.crypt(p_password, extensions.gen_salt('bf')), now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
-    jsonb_build_object('nombre', p_nombre), now(), now())
+    jsonb_build_object('nombre', p_nombre), now(), now(),
+    '', '', '', '', '', '', '', '')
   returning id into v_id;
   insert into auth.identities (id, user_id, provider_id, identity_data, provider,
     last_sign_in_at, created_at, updated_at)

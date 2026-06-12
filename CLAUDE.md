@@ -10,7 +10,7 @@ Plataforma operativa post-venta de KENET Solar (instaladora solar mexicana, ~60 
 
 ## Stack
 
-- **MVP actual:** `index.html` único (vanilla JS + Supabase JS v2 por CDN) + Supabase (Postgres, Auth magic link, RLS) + Netlify Drop. $0/mes.
+- **MVP actual:** `index.html` único (vanilla JS + Supabase JS v2 por CDN) + Supabase (Postgres, Auth email+contraseña gestionada por SQL — `sql/03_usuarios.sql`, RLS) + Netlify conectado a GitHub. $0/mes.
 - **Destino (F3+, solo si el piloto pasa):** Next.js + Supabase + Vercel. No migrar antes de validar el piloto.
 
 ## Modelo de datos (sql/01_schema.sql)
@@ -49,6 +49,7 @@ Plataforma operativa post-venta de KENET Solar (instaladora solar mexicana, ~60 
 - Catálogos cerrados: ningún campo crítico de texto libre en la UI.
 - Toda mutación debe quedar en `bitacora` (los triggers lo hacen — no los esquives con service_role desde el cliente).
 - La anon key es pública por diseño; la seguridad es RLS + registro de usuarios cerrado (Auth → signups deshabilitados).
+- Usuarios operativos se gestionan SOLO con las funciones `go_*` de `sql/03_usuarios.sql` (crear, cambiar contraseña, bloquear/reactivar). Tienen EXECUTE revocado a anon/authenticated — solo corren en SQL Editor. Nunca borrar usuarios (la bitácora referencia su email); bloquear. Nunca commitear contraseñas reales al repo.
 - Datos reales de clientes: NO subir `02_seed.sql` a repos públicos. Repo privado siempre.
 
 ## Gotchas conocidos

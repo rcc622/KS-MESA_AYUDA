@@ -97,8 +97,8 @@
 
 <!-- ====== CONFIGURACIÓN — pegar credenciales de Supabase aquí ====== -->
 <script>
-  const SUPABASE_URL = "PEGA_AQUI_TU_SUPABASE_URL";        // ej. https://abcdefgh.supabase.co
-  const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_ANON_KEY";       // Settings → API → anon public
+  const SUPABASE_URL = "https://sferngpbfbihfcnhcbno.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZXJuZ3BiZmJpaGZjbmhjYm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTY4NjEsImV4cCI6MjA5Njc3Mjg2MX0.A_2-mupAyS6j73axc6uVQyAGriHra5WRAPlszSo0U4Q";
 </script>
 
 <div id="app"></div>
@@ -142,17 +142,19 @@ function renderLogin(){
   $('app').innerHTML = `
     <div class="login-wrap">
       <h1>KENET <span style="color:var(--ambar)">SOLAR</span></h1>
-      <div class="sub">Mesa de Ayuda · Piloto R2<br>Acceso solo para usuarios invitados</div>
-      <input type="email" id="email" placeholder="tu@correo.com">
-      <button class="btn primario" style="width:100%" onclick="login()">Enviarme liga de acceso</button>
+      <div class="sub">Mesa de Ayuda · Piloto R2<br>Acceso solo para usuarios autorizados (los gestiona GO)</div>
+      <input type="email" id="email" placeholder="tu@correo.com" autocomplete="username">
+      <input type="password" id="pass" placeholder="contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+      <button class="btn primario" style="width:100%" onclick="login()">Entrar</button>
       <div class="msg" id="loginMsg"></div>
     </div>`;
 }
 async function login(){
-  const email = $('email').value.trim();
-  if(!email) return;
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href.split('#')[0] } });
-  $('loginMsg').textContent = error ? ('Error: '+error.message) : '✅ Liga enviada — revisa tu correo y ábrela en este dispositivo.';
+  const email = $('email').value.trim().toLowerCase();
+  const password = $('pass').value;
+  if(!email || !password) return;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  $('loginMsg').textContent = error ? 'Correo o contraseña incorrectos.' : '';
 }
 async function logout(){ await sb.auth.signOut(); }
 

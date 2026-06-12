@@ -8,6 +8,7 @@ Contenido de esta carpeta:
 |---|---|
 | `01_schema.sql` | Estructura de la base: etapas (CJ v9), clientes, eventos, bitácora automática, RLS |
 | `02_seed.sql` | 430 clientes reales de R2 (126 activos + 304 histórico) extraídos de PENDIENTE INSTALACIONES.xlsx |
+| `03_usuarios.sql` | Gestión de usuarios operativos por SQL: crear, cambiar contraseña, bloquear/reactivar |
 | `index.html` | La app completa (login + journey + tablero GO + bitácora) |
 | `GUIA_DEPLOY_MVP.md` | Esta guía |
 
@@ -33,13 +34,12 @@ Contenido de esta carpeta:
 
 ## Paso 3 — Configurar el acceso (5 min)
 
-1. Menú **Authentication** → **Sign In / Up** → dejar habilitado **Email** (magic link viene activo por default).
+El login es **email + contraseña**, y los usuarios se gestionan **por SQL** (decisión GO: altas, cambios de contraseña y bajas en segundos, sin clickear el dashboard).
+
+1. Menú **Authentication** → **Sign In / Up** → dejar habilitado **Email**.
 2. **IMPORTANTE — cerrar el registro público:** Authentication → Sign In / Up → **desactivar "Allow new users to sign up"**. Así solo entran usuarios que TÚ crees.
-3. Crear los usuarios del piloto: Authentication → **Users** → **Add user** → **Create new user**:
-   - Tu correo
-   - El de Lesly
-   - Controlador CS y líderes R2 (5-8 máx)
-   - En cada uno: marca **Auto Confirm User**
+3. **SQL Editor** → New query → pegar `03_usuarios.sql` **editado**: sección B con los correos/contraseñas reales del piloto (tú, Lesly, controlador CS y líderes R2 — 5-8 máx) → **Run**. Debe regresar `CREADO: ...` por cada uno.
+4. Para el día a día (cambiar contraseña, baja por rotación, reactivar, listar): ejemplos listos en la sección C del mismo archivo. **Nunca borres usuarios** — bloquéalos; la bitácora referencia su email.
 
 ## Paso 4 — Conectar la app (3 min)
 
@@ -62,12 +62,12 @@ Opción más simple — **Netlify Drop**:
 1. Ir a https://app.netlify.com/drop (crear cuenta gratis si pide).
 2. Arrastrar el archivo `index.html` (o la carpeta) a la zona de drop.
 3. Te da una URL tipo `https://random-name.netlify.app`. En **Site settings → Change site name** ponle: `kenet-mesa-r2`.
-4. **Volver a Supabase**: Authentication → **URL Configuration** → en **Site URL** pegar `https://kenet-mesa-r2.netlify.app` y agregarla también en **Redirect URLs**. (Sin esto, la liga del correo de login no regresa a la app.)
+4. **Volver a Supabase**: Authentication → **URL Configuration** → en **Site URL** pegar la URL de Netlify y agregarla también en **Redirect URLs**. (Con login por contraseña no es crítico hoy, pero deja listo el terreno para recuperación de contraseña o magic link futuros.)
 
 ## Paso 6 — Probar (2 min)
 
-1. Abrir la URL → escribir tu correo → **Enviarme liga de acceso**.
-2. Abrir el correo (revisar spam la primera vez) → clic en la liga → entras a la app.
+1. Abrir la URL → escribir tu correo y contraseña (los de `03_usuarios.sql`) → **Entrar**.
+2. Entras directo — sin correos ni ligas.
 3. Checklist de prueba:
    - [ ] Se ven los 126 clientes activos R2
    - [ ] Filtro TRC / MVA funciona
@@ -99,8 +99,8 @@ Si no pasa → diagnóstico con los datos de la bitácora (qué área no captur�
 
 | Síntoma | Causa / Fix |
 |---|---|
-| La liga del correo no abre la app | Falta la URL de Netlify en Supabase → Authentication → URL Configuration |
-| "Error: signups not allowed" | Correcto — el usuario no existe. Créalo en Authentication → Users |
+| "Correo o contraseña incorrectos" | Usuario no creado (corre la sección B de `03_usuarios.sql`) o typo; resetea con `go_cambiar_password` |
+| Usuario dado de baja sigue entrando | Su sesión vive hasta 1 hora; el bloqueo (`go_bloquear_usuario`) aplica al renovar token |
 | No carga datos tras login | Las credenciales en index.html mal pegadas (URL o anon key) |
 | Cambié algo en index.html | Re-arrastrar a Netlify Drop (Deploys → drag & drop) — 10 segundos |
 

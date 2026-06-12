@@ -68,6 +68,29 @@ begin
   return 'REACTIVADO: ' || p_email;
 end $$;
 
+-- Eliminación TOTAL por SQL. El botón de borrar del dashboard falla con
+-- usuarios creados por SQL (filas huérfanas en tablas internas de auth);
+-- esta función limpia todas las dependencias en orden y luego el usuario.
+-- Úsala para usuarios basura/typos. Para bajas por rotación con historial
+-- de bitácora, mejor go_bloquear_usuario (conserva last_sign_in).
+-- La bitácora NO se rompe al eliminar: guarda el email como texto.
+create or replace function go_eliminar_usuario(p_email text)
+returns text language plpgsql security definer set search_path = '' as $$
+declare v_id uuid;
+begin
+  select id into v_id from auth.users where email = lower(trim(p_email));
+  if v_id is null then return 'NO EXISTE: ' || p_email; end if;
+  delete from auth.mfa_amr_claims where session_id in (select id from auth.sessions where user_id = v_id);
+  delete from auth.mfa_challenges where factor_id in (select id from auth.mfa_factors where user_id = v_id);
+  delete from auth.mfa_factors where user_id = v_id;
+  delete from auth.refresh_tokens where user_id = v_id::text;
+  delete from auth.sessions where user_id = v_id;
+  delete from auth.one_time_tokens where user_id = v_id;
+  delete from auth.identities where user_id = v_id;
+  delete from auth.users where id = v_id;
+  return 'ELIMINADO: ' || p_email;
+end $$;
+
 -- CRÍTICO: sin esto, cualquier usuario de la app podría llamar estas
 -- funciones vía la API REST (rpc) y crearse accesos o cambiar contraseñas.
 -- Solo el SQL Editor (rol postgres) puede ejecutarlas.
@@ -75,6 +98,7 @@ revoke execute on function go_crear_usuario(text, text, text) from public, anon,
 revoke execute on function go_cambiar_password(text, text) from public, anon, authenticated;
 revoke execute on function go_bloquear_usuario(text) from public, anon, authenticated;
 revoke execute on function go_reactivar_usuario(text) from public, anon, authenticated;
+revoke execute on function go_eliminar_usuario(text) from public, anon, authenticated;
 
 -- ---------- B. USUARIOS DEL PILOTO (EDITAR correos/contraseñas y correr) ----------
 -- Contraseñas: mínimo 8 caracteres, únicas por persona (la bitácora
@@ -95,6 +119,13 @@ select go_crear_usuario('alondra@CAMBIAME.com', 'CAMBIAME-Cs-2026',  'Alondra He
 
 -- Reactivar:
 --   select go_reactivar_usuario('lesly@kenet.mx');
+
+-- Eliminar de raíz (usuario basura/typo — para rotación usa bloquear):
+--   select go_eliminar_usuario('typo@correo.com');
+
+-- Recrear desde cero ("YA EXISTE" pero lo quieres nuevo):
+--   select go_eliminar_usuario('persona@kenet.mx');
+--   select go_crear_usuario('persona@kenet.mx', 'PassNueva-2026', 'Nombre (rol)');
 
 -- Listar usuarios y último acceso:
 --   select email, raw_user_meta_data->>'nombre' as nombre,

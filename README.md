@@ -14,5 +14,7 @@ Plataforma operativa post-venta. Un solo `index.html` + Supabase. Ver `CLAUDE.md
 - `index.html` — app completa (login, journey R2, tablero GO, bitacora)
 - `sql/01_schema.sql` — esquema + RLS + triggers de auditoria
 - `sql/02_seed.sql` — 430 clientes reales R2 (126 activos) ⚠ datos sensibles, repo privado
-- `sql/03_usuarios.sql` — gestion de usuarios por SQL (crear, password, bloquear)
+- `sql/03_usuarios.sql` — roster plano de EMPLEADOS (crear, password, rol, zona, baja)
+- `sql/04_perfiles.sql` — tabla profiles + trigger automatico (correr antes que 03)
+- `sql/05_clientes.sql` — roster plano de CLIENTES (buscar, editar, etapa, cobro, archivar)
 - `docs/GUIA_DEPLOY_MVP.md` — guia de deploy paso a paso

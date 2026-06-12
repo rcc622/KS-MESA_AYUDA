@@ -122,7 +122,10 @@ create trigger trg_audit_clientes before update on clientes
 for each row execute function fn_audit_clientes();
 
 -- ---------- 6. VISTA: tabla maestra con días en etapa y semáforo ----------
-create or replace view v_journey as
+-- security_invoker: la vista respeta el RLS de las tablas base. Sin esto,
+-- corre con permisos del dueño (postgres) y expone TODOS los clientes al
+-- rol anon — la anon key es pública, sería fuga total de datos.
+create or replace view v_journey with (security_invoker = true) as
 select
   c.id, c.folio, c.nombre, c.zona, c.region, c.orden_venta, c.factura_folio,
   c.sistema, c.vendedor, c.esquema_pago, c.premium,
@@ -138,6 +141,9 @@ select
 from clientes c
 join etapas e on e.id = c.etapa_actual
 join cobro_estados ce on ce.id = c.cobro_estado;
+
+-- Cinturón y tirantes: anon no puede ni intentar leer la vista.
+revoke select on v_journey from anon;
 
 -- ---------- 7. RLS (Row Level Security) ----------
 alter table clientes enable row level security;

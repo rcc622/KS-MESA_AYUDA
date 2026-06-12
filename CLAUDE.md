@@ -53,7 +53,7 @@ Plataforma operativa post-venta de KENET Solar (instaladora solar mexicana, ~60 
 - Catálogos cerrados: ningún campo crítico de texto libre en la UI.
 - Toda mutación debe quedar en `bitacora` (los triggers lo hacen — no los esquives con service_role desde el cliente).
 - La anon key es pública por diseño; la seguridad es RLS + registro de usuarios cerrado (Auth → signups deshabilitados).
-- Usuarios operativos se gestionan SOLO con las funciones `go_*` de `sql/03_usuarios.sql` (crear, cambiar contraseña, bloquear/reactivar). Tienen EXECUTE revocado a anon/authenticated — solo corren en SQL Editor. Nunca borrar usuarios (la bitácora referencia su email); bloquear. Nunca commitear contraseñas reales al repo.
+- Usuarios y clientes se gestionan por SQL PLANO estilo roster (preferencia firme de Randall — NUNCA encapsular en funciones helper): `sql/03_usuarios.sql` (empleados: crear con fix de tokens GoTrue, contraseñas, rol/zona, bloquear, eliminar) y `sql/05_clientes.sql` (clientes: buscar, editar, etapa, cobro, archivar). Bajas de personal = bloquear, nunca borrar (la bitácora referencia su email). Nunca commitear contraseñas reales al repo.
 - Datos reales de clientes: NO subir `02_seed.sql` a repos públicos. Repo privado siempre.
 
 ## Gotchas conocidos

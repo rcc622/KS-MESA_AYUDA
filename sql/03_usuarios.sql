@@ -1,257 +1,138 @@
--- ============================================================
--- 03_usuarios.sql — KIT DE MANTENIMIENTO de usuarios (solo GO)
--- Correr en Supabase SQL Editor. Orden: 01_schema → 03 → 04_perfiles.
--- Login de la app: email + contraseña (signInWithPassword).
+-- =====================================================================
+-- 👥 GESTIÓN DE USUARIOS — Mesa de Ayuda KENET (piloto R2)
+-- IDEMPOTENTE: se puede re-correr completo sin romper nada.
+-- Estilo roster: edita los renglones y corre TODO el script.
+-- Orden de instalación: 01_schema → 04_perfiles → este.
 --
--- USO: pega la SECCIÓN A completa y córrela UNA vez (re-correrla es
--- seguro: create or replace). Después, el día a día son los one-liners
--- de la SECCIÓN C.
---
--- ⚠ Toca tablas internas de Supabase Auth. Es el método estándar para
---   gestión por SQL, pero si tras una actualización de Supabase algo
---   falla, plan B: dashboard → Authentication → Users.
--- ⚠ NUNCA guardes contraseñas reales en este archivo/repo. Edita en el
---   SQL Editor, corre, y aquí solo placeholders CAMBIAME.
--- ============================================================
+-- ⚠ NO guardar contraseñas reales en el repo: edítalas en el SQL Editor.
+-- =====================================================================
 
--- ============================================================
--- SECCIÓN A — FUNCIONES (correr una vez; re-correr = actualizar)
--- ============================================================
+-- 1) CREAR USUARIOS NUEVOS — edita la lista values(...). Si el correo ya
+--    existe, lo brinca (no toca su contraseña). Incluye las columnas de
+--    tokens en '' — con NULL el login truena (error 500 de GoTrue).
+insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
+  email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+  confirmation_token, recovery_token, email_change, email_change_token_new,
+  email_change_token_current, phone_change, phone_change_token, reauthentication_token)
+select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
+  'authenticated', lower(v.email), extensions.crypt(v.password, extensions.gen_salt('bf')), now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  jsonb_build_object('nombre', v.nombre), now(), now(),
+  '', '', '', '', '', '', '', ''
+from (values
+  -- ( correo,                     contraseña inicial,   nombre )
+  ('randall@kenetsolar.com',      'CAMBIAME-1234',      'Randall Cruz'),
+  ('rcc622@gmail.com',            'CAMBIAME-1234',      'Randall (pruebas)')
+  -- ,('lesly@kenet.mx',          'CAMBIAME-1234',      'Lesly Palacios')
+  -- ,('alondra@kenet.mx',        'CAMBIAME-1234',      'Alondra Hernández')
+) as v(email, password, nombre)
+where not exists (select 1 from auth.users u where u.email = lower(v.email));
 
--- A1. CREAR usuario completo: auth + perfil con rol y zona.
---     Roles válidos: 'go' | 'coordinador' | 'operativo' | 'consulta'
---     Zonas válidas: 'MTY' | 'SLT' | 'TRC' | 'MVA' | null (= todas)
-create or replace function go_crear_usuario(
-  p_email text, p_password text, p_nombre text default '',
-  p_rol text default 'operativo', p_zona text default null
-)
-returns text language plpgsql security definer set search_path = '' as $$
-declare v_id uuid;
-begin
-  p_email := lower(trim(p_email));
-  if exists (select 1 from auth.users where email = p_email) then
-    return 'YA EXISTE: ' || p_email || ' (usa go_cambiar_* para modificarlo)';
-  end if;
-  -- Columnas de tokens en '' (NO null): GoTrue regresa error 500
-  -- "Database error querying schema" en el login si quedan NULL.
-  insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
-    email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
-    confirmation_token, recovery_token, email_change, email_change_token_new,
-    email_change_token_current, phone_change, phone_change_token, reauthentication_token)
-  values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
-    'authenticated', p_email, extensions.crypt(p_password, extensions.gen_salt('bf')), now(),
-    '{"provider":"email","providers":["email"]}'::jsonb,
-    jsonb_build_object('nombre', p_nombre), now(), now(),
-    '', '', '', '', '', '', '', '')
-  returning id into v_id;
-  insert into auth.identities (id, user_id, provider_id, identity_data, provider,
-    last_sign_in_at, created_at, updated_at)
-  values (gen_random_uuid(), v_id, v_id::text,
-    jsonb_build_object('sub', v_id::text, 'email', p_email, 'email_verified', true),
-    'email', null, now(), now());
-  -- Perfil (lo crea el trigger de 04_perfiles; aquí se asignan rol/zona)
-  if to_regclass('public.profiles') is not null then
-    insert into public.profiles (id, email, full_name, role, zone)
-    values (v_id, p_email, p_nombre, p_rol, p_zona)
-    on conflict (id) do update
-      set full_name = excluded.full_name, role = excluded.role, zone = excluded.zone;
-  end if;
-  return 'CREADO: ' || p_email || ' · rol=' || p_rol || ' · zona=' || coalesce(p_zona,'todas');
-end $$;
+-- 1b) REPARACIONES (idempotentes, no editan nada que ya esté bien):
+-- identidad email faltante = login imposible; tokens NULL = error 500.
+insert into auth.identities (id, user_id, provider_id, identity_data, provider, created_at, updated_at)
+select gen_random_uuid(), u.id, u.id::text,
+       jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
+       'email', now(), now()
+  from auth.users u
+  left join auth.identities i on i.user_id = u.id and i.provider = 'email'
+ where i.id is null;
 
--- A2. CAMBIAR CONTRASEÑA (no tumba sesiones activas; vencen solas ~1h)
-create or replace function go_cambiar_password(p_email text, p_password text)
-returns text language plpgsql security definer set search_path = '' as $$
-begin
-  update auth.users
-  set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')),
-      updated_at = now()
-  where email = lower(trim(p_email));
-  if not found then return 'NO EXISTE: ' || p_email; end if;
-  return 'CONTRASEÑA ACTUALIZADA: ' || p_email;
-end $$;
+update auth.users set
+  confirmation_token         = coalesce(confirmation_token, ''),
+  recovery_token             = coalesce(recovery_token, ''),
+  email_change               = coalesce(email_change, ''),
+  email_change_token_new     = coalesce(email_change_token_new, ''),
+  email_change_token_current = coalesce(email_change_token_current, ''),
+  phone_change               = coalesce(phone_change, ''),
+  phone_change_token         = coalesce(phone_change_token, ''),
+  reauthentication_token     = coalesce(reauthentication_token, '');
 
--- A3. CAMBIAR CORREO (auth + identidad + perfil; la bitácora histórica
---     conserva el correo viejo como texto — correcto para auditoría).
---     La sesión activa sigue mostrando el correo viejo hasta ~1h.
-create or replace function go_cambiar_correo(p_email_actual text, p_email_nuevo text)
-returns text language plpgsql security definer set search_path = '' as $$
-declare v_id uuid;
-begin
-  p_email_actual := lower(trim(p_email_actual));
-  p_email_nuevo  := lower(trim(p_email_nuevo));
-  if exists (select 1 from auth.users where email = p_email_nuevo) then
-    return 'OCUPADO: ' || p_email_nuevo || ' ya pertenece a otro usuario';
-  end if;
-  select id into v_id from auth.users where email = p_email_actual;
-  if v_id is null then return 'NO EXISTE: ' || p_email_actual; end if;
-  update auth.users set email = p_email_nuevo, updated_at = now() where id = v_id;
-  update auth.identities
-     set identity_data = jsonb_set(identity_data, '{email}', to_jsonb(p_email_nuevo)),
-         updated_at = now()
-   where user_id = v_id and provider = 'email';
-  if to_regclass('public.profiles') is not null then
-    update public.profiles set email = p_email_nuevo, updated_at = now() where id = v_id;
-  end if;
-  return 'CORREO CAMBIADO: ' || p_email_actual || ' → ' || p_email_nuevo;
-end $$;
+-- 2) BACKFILL: crea profiles para auth.users que no tengan uno.
+insert into public.profiles (id, email, role)
+select u.id, u.email, 'operativo'
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+ where p.id is null;
 
--- A4. CAMBIAR NOMBRE (metadata de auth + perfil)
-create or replace function go_cambiar_nombre(p_email text, p_nombre text)
-returns text language plpgsql security definer set search_path = '' as $$
-declare v_id uuid;
-begin
-  select id into v_id from auth.users where email = lower(trim(p_email));
-  if v_id is null then return 'NO EXISTE: ' || p_email; end if;
-  update auth.users
-     set raw_user_meta_data = jsonb_set(coalesce(raw_user_meta_data,'{}'::jsonb), '{nombre}', to_jsonb(p_nombre)),
-         updated_at = now()
-   where id = v_id;
-  if to_regclass('public.profiles') is not null then
-    update public.profiles set full_name = p_nombre, updated_at = now() where id = v_id;
-  end if;
-  return 'NOMBRE ACTUALIZADO: ' || p_email || ' → ' || p_nombre;
-end $$;
+-- 3) GO / DIRECCIÓN
+update public.profiles set role='go', full_name='Randall Cruz'
+ where email='randall@kenetsolar.com';
+update public.profiles set role='go', full_name='Randall (pruebas)'
+ where email='rcc622@gmail.com';
+-- update public.profiles set role='consulta', full_name='Guillermo Hernández'
+--  where email='CORREO_GUILLERMO';
 
--- A5. CAMBIAR ROL ('go' | 'coordinador' | 'operativo' | 'consulta')
-create or replace function go_cambiar_rol(p_email text, p_rol text)
-returns text language plpgsql security definer set search_path = '' as $$
-begin
-  if to_regclass('public.profiles') is null then
-    return 'FALTA correr 04_perfiles.sql (tabla profiles no existe)';
-  end if;
-  update public.profiles set role = p_rol, updated_at = now()
-   where email = lower(trim(p_email));
-  if not found then return 'NO EXISTE: ' || p_email; end if;
-  return 'ROL ACTUALIZADO: ' || p_email || ' → ' || p_rol;
-end $$;
+-- 4) EQUIPO POR ZONA (roles: go | coordinador | operativo | consulta;
+--    zonas: MTY | SLT | TRC | MVA; sin zone = todas)
 
--- A6. CAMBIAR ZONA/ÁREA ('MTY'|'SLT'|'TRC'|'MVA' o null = todas)
-create or replace function go_cambiar_zona(p_email text, p_zona text)
-returns text language plpgsql security definer set search_path = '' as $$
-begin
-  if to_regclass('public.profiles') is null then
-    return 'FALTA correr 04_perfiles.sql (tabla profiles no existe)';
-  end if;
-  update public.profiles set zone = p_zona, updated_at = now()
-   where email = lower(trim(p_email));
-  if not found then return 'NO EXISTE: ' || p_email; end if;
-  return 'ZONA ACTUALIZADA: ' || p_email || ' → ' || coalesce(p_zona,'todas');
-end $$;
+-- Nodo R2 — Torreón
+-- update public.profiles set role='operativo', full_name='Lesly Palacios',    zone='TRC' where email='lesly@kenet.mx';
+-- update public.profiles set role='operativo', full_name='Alondra Hernández', zone='TRC' where email='alondra@kenet.mx';
 
--- A7. BLOQUEAR (rotación: conserva historial; el token vivo vence ~1h)
-create or replace function go_bloquear_usuario(p_email text)
-returns text language plpgsql security definer set search_path = '' as $$
-begin
-  update auth.users set banned_until = 'infinity', updated_at = now()
-  where email = lower(trim(p_email));
-  if not found then return 'NO EXISTE: ' || p_email; end if;
-  return 'BLOQUEADO: ' || p_email;
-end $$;
+-- Nodo R2 — Monclova
+-- update public.profiles set role='operativo', full_name='Iván Gallegos',     zone='MVA' where email='CORREO_IVAN';
 
--- A8. REACTIVAR
-create or replace function go_reactivar_usuario(p_email text)
-returns text language plpgsql security definer set search_path = '' as $$
-begin
-  update auth.users set banned_until = null, updated_at = now()
-  where email = lower(trim(p_email));
-  if not found then return 'NO EXISTE: ' || p_email; end if;
-  return 'REACTIVADO: ' || p_email;
-end $$;
+-- Nodo R1 — Monterrey (entra en F3)
+-- update public.profiles set role='coordinador', full_name='Coordinador Mesa', zone='MTY' where email='...';
 
--- A9. ELIMINAR de raíz (basura/typos; para rotación usa A7-bloquear).
---     El dashboard falla por FKs internas; esto limpia todo en orden.
---     El perfil cae solo (FK on delete cascade). Bitácora no se rompe.
-create or replace function go_eliminar_usuario(p_email text)
-returns text language plpgsql security definer set search_path = '' as $$
-declare v_id uuid;
-begin
-  select id into v_id from auth.users where email = lower(trim(p_email));
-  if v_id is null then return 'NO EXISTE: ' || p_email; end if;
-  delete from auth.mfa_amr_claims where session_id in (select id from auth.sessions where user_id = v_id);
-  delete from auth.mfa_challenges where factor_id in (select id from auth.mfa_factors where user_id = v_id);
-  delete from auth.mfa_factors where user_id = v_id;
-  delete from auth.refresh_tokens where user_id = v_id::text;
-  delete from auth.sessions where user_id = v_id;
-  delete from auth.one_time_tokens where user_id = v_id;
-  delete from auth.identities where user_id = v_id;
-  delete from auth.users where id = v_id;
-  return 'ELIMINADO: ' || p_email;
-end $$;
+-- 5) CONTRASEÑAS — un renglón por persona, edita y corre solo los que
+--    quieras cambiar (re-correr el mismo renglón no hace daño):
+-- update auth.users set encrypted_password = extensions.crypt('NuevaPass-99', extensions.gen_salt('bf')) where email='randall@kenetsolar.com';
+-- update auth.users set encrypted_password = extensions.crypt('OtraPass-99',  extensions.gen_salt('bf')) where email='lesly@kenet.mx';
 
--- A10. VER TODOS (panel de control en un select)
-create or replace function go_ver_usuarios()
-returns table (
-  correo text, nombre text, rol text, zona text,
-  bloqueado boolean, ultimo_acceso timestamptz, creado timestamptz
-) language sql security definer set search_path = '' as $$
-  select u.email,
-         coalesce(p.full_name, u.raw_user_meta_data->>'nombre', ''),
-         coalesce(p.role, 'sin perfil'),
-         coalesce(p.zone, 'todas'),
-         u.banned_until is not null and u.banned_until > now(),
-         u.last_sign_in_at,
-         u.created_at
-    from auth.users u
-    left join public.profiles p on p.id = u.id
-   order by coalesce(p.role,'zzz'), p.zone nulls last, u.email;
-$$;
+--    Lote con contraseña COMÚN (patrón Comisiones) — ⚠ en la Mesa la
+--    bitácora atribuye por usuario; contraseña compartida = autoría negable:
+-- update auth.users set encrypted_password = extensions.crypt('comun123', extensions.gen_salt('bf'))
+--  where email in ('a@kenet.mx','b@kenet.mx');
 
--- CRÍTICO: sin estos revoke, cualquier usuario de la app podría llamar
--- las funciones vía API REST (rpc) y auto-gestionarse accesos.
-revoke execute on function go_crear_usuario(text, text, text, text, text) from public, anon, authenticated;
-revoke execute on function go_cambiar_password(text, text) from public, anon, authenticated;
-revoke execute on function go_cambiar_correo(text, text) from public, anon, authenticated;
-revoke execute on function go_cambiar_nombre(text, text) from public, anon, authenticated;
-revoke execute on function go_cambiar_rol(text, text) from public, anon, authenticated;
-revoke execute on function go_cambiar_zona(text, text) from public, anon, authenticated;
-revoke execute on function go_bloquear_usuario(text) from public, anon, authenticated;
-revoke execute on function go_reactivar_usuario(text) from public, anon, authenticated;
-revoke execute on function go_eliminar_usuario(text) from public, anon, authenticated;
-revoke execute on function go_ver_usuarios() from public, anon, authenticated;
+-- 6) RECETAS SUELTAS (descomenta, edita, corre)
 
--- Limpieza: la firma vieja de go_crear_usuario(text,text,text) queda
--- obsoleta al agregar rol/zona — eliminarla si existe.
-drop function if exists go_crear_usuario(text, text, text);
+-- 6a) CAMBIAR CORREO (3 renglones, en este orden):
+-- update auth.users set email='nuevo@kenet.mx' where email='viejo@kenet.mx';
+-- update auth.identities set identity_data = jsonb_set(identity_data,'{email}','"nuevo@kenet.mx"')
+--  where provider='email' and user_id=(select id from auth.users where email='nuevo@kenet.mx');
+-- update public.profiles set email='nuevo@kenet.mx' where email='viejo@kenet.mx';
 
--- ============================================================
--- SECCIÓN B — ALTAS DEL PILOTO (editar y correr; solo placeholders aquí)
--- ============================================================
+-- 6b) CAMBIAR NOMBRE (2 renglones):
+-- update public.profiles set full_name='Nombre Nuevo' where email='persona@kenet.mx';
+-- update auth.users set raw_user_meta_data = jsonb_set(coalesce(raw_user_meta_data,'{}'),'{nombre}','"Nombre Nuevo"')
+--  where email='persona@kenet.mx';
 
--- select go_crear_usuario('correo@kenet.mx', 'CAMBIAME-1234', 'Nombre Apellido', 'operativo', 'TRC');
--- select go_crear_usuario('correo2@kenet.mx', 'CAMBIAME-1234', 'Nombre Apellido', 'consulta', null);
+-- 6c) BAJA POR ROTACIÓN (bloquea, conserva historial — NO borrar):
+-- update auth.users set banned_until='infinity' where email='exempleado@kenet.mx';
 
--- ============================================================
--- SECCIÓN C — OPERACIÓN DIARIA (one-liners: copiar, editar, correr)
--- ============================================================
+-- 6d) REACTIVAR:
+-- update auth.users set banned_until=null where email='persona@kenet.mx';
 
--- Ver panel completo:
---   select * from go_ver_usuarios();
+-- 6e) ELIMINAR DE RAÍZ (solo basura/typos; el dashboard falla por FKs —
+--     estos 8 deletes limpian todo; corre el bloque completo):
+-- delete from auth.mfa_amr_claims where session_id in (select id from auth.sessions where user_id = (select id from auth.users where email='typo@x.com'));
+-- delete from auth.mfa_challenges where factor_id in (select id from auth.mfa_factors where user_id = (select id from auth.users where email='typo@x.com'));
+-- delete from auth.mfa_factors    where user_id = (select id from auth.users where email='typo@x.com');
+-- delete from auth.refresh_tokens where user_id = (select id from auth.users where email='typo@x.com')::text;
+-- delete from auth.sessions       where user_id = (select id from auth.users where email='typo@x.com');
+-- delete from auth.one_time_tokens where user_id = (select id from auth.users where email='typo@x.com');
+-- delete from auth.identities     where user_id = (select id from auth.users where email='typo@x.com');
+-- delete from auth.users          where email='typo@x.com';
 
--- Cambiar contraseña:
---   select go_cambiar_password('persona@kenet.mx', 'NuevaSegura-99');
+-- 7) VERIFICACIÓN
+select p.role, p.zone, p.full_name, p.email,
+       u.banned_until is not null and u.banned_until > now() as bloqueado,
+       u.last_sign_in_at
+  from public.profiles p
+  join auth.users u on u.id = p.id
+ order by p.role desc, p.zone nulls last, p.full_name nulls last;
 
--- Cambiar correo:
---   select go_cambiar_correo('viejo@kenet.mx', 'nuevo@kenet.mx');
-
--- Cambiar nombre:
---   select go_cambiar_nombre('persona@kenet.mx', 'Nombre Nuevo (PM R2)');
-
--- Cambiar rol (go | coordinador | operativo | consulta):
---   select go_cambiar_rol('persona@kenet.mx', 'coordinador');
-
--- Cambiar zona (MTY | SLT | TRC | MVA | null = todas):
---   select go_cambiar_zona('persona@kenet.mx', 'TRC');
-
--- Baja por rotación (conserva historial):
---   select go_bloquear_usuario('exempleado@kenet.mx');
-
--- Reactivar:
---   select go_reactivar_usuario('persona@kenet.mx');
-
--- Eliminar de raíz (solo basura/typos):
---   select go_eliminar_usuario('typo@correo.com');
-
--- Recrear desde cero:
---   select go_eliminar_usuario('persona@kenet.mx');
---   select go_crear_usuario('persona@kenet.mx', 'Pass-2026', 'Nombre', 'operativo', 'TRC');
+-- 8) (OPCIONAL, una vez) Limpiar las funciones go_* del enfoque anterior:
+-- drop function if exists go_crear_usuario(text,text,text);
+-- drop function if exists go_crear_usuario(text,text,text,text,text);
+-- drop function if exists go_cambiar_password(text,text);
+-- drop function if exists go_cambiar_correo(text,text);
+-- drop function if exists go_cambiar_nombre(text,text);
+-- drop function if exists go_cambiar_rol(text,text);
+-- drop function if exists go_cambiar_zona(text,text);
+-- drop function if exists go_bloquear_usuario(text);
+-- drop function if exists go_reactivar_usuario(text);
+-- drop function if exists go_eliminar_usuario(text);
+-- drop function if exists go_ver_usuarios();

@@ -1,138 +1,133 @@
 -- =====================================================================
--- 👥 GESTIÓN DE USUARIOS — Mesa de Ayuda KENET (piloto R2)
--- IDEMPOTENTE: se puede re-correr completo sin romper nada.
--- Estilo roster: edita los renglones y corre TODO el script.
--- Orden de instalación: 01_schema → 04_perfiles → este.
+-- 👥 USUARIOS — Roster DECLARATIVO (Mesa de Ayuda KENET, piloto R2)
+-- =====================================================================
+-- CÓMO SE USA:
+--   1. Edita SOLO la tabla de la SECCIÓN 1 (un renglón por persona).
+--   2. Corre TODO el script (Run). El script reconcilia la base con tu lista:
+--      crea los nuevos, actualiza nombre/rol/zona, y bloquea/reactiva.
+--   3. Re-correrlo cuantas veces quieras: es idempotente.
 --
--- ⚠ NO guardar contraseñas reales en el repo: edítalas en el SQL Editor.
+-- REGLAS DEL ROSTER:
+--   · password: déjala en '' para NO tocarla. Pon un valor SOLO cuando
+--     quieras crear/resetear esa contraseña (y luego puedes volver a '').
+--   · activo: true = puede entrar; false = bloqueado (NO se borra, la
+--     bitácora antifraude referencia su correo).
+--   · Quitar un renglón NO hace nada (no bloquea por omisión, para no
+--     dejar a nadie afuera por error). Para dar de baja: activo => false.
+--   · role: go | coordinador | operativo | consulta
+--   · zone: MTY | SLT | TRC | MVA   (déjala NULL = ve todas las zonas)
+--   · ⚠ No subas contraseñas reales al repo: ponlas aquí en el SQL Editor
+--     al momento de resetear, y vuelve a dejarlas en '' antes de commitear.
+--
+-- Orden de instalación: 01_schema → 04_perfiles → este.
 -- =====================================================================
 
--- 1) CREAR USUARIOS NUEVOS — edita la lista values(...). Si el correo ya
---    existe, lo brinca (no toca su contraseña). Incluye las columnas de
---    tokens en '' — con NULL el login truena (error 500 de GoTrue).
+-- ---------- SECCIÓN 1 — EDITA AQUÍ (única fuente de verdad) ----------
+drop table if exists _roster;
+create temp table _roster(email text, nombre text, password text, role text, zone text, activo boolean);
+
+insert into _roster(email, nombre, password, role, zone, activo) values
+  -- ( correo,                  nombre,               password,         role,        zone,  activo )
+  ('rcc622@gmail.com',          'Randall (pruebas)',  'CAMBIAME-1234',  'go',        null,  true),
+  ('randall@kenetsolar.com',    'Randall Cruz',       '',               'go',        null,  true)
+  -- ,('lesly@kenet.mx',        'Lesly Palacios',     '',               'operativo', 'TRC', true)
+  -- ,('alondra@kenet.mx',      'Alondra Hernández',  '',               'operativo', 'TRC', true)
+  -- ,('ivan@kenet.mx',         'Iván Gallegos',      '',               'operativo', 'MVA', true)
+  -- ,('guillermo@protexo.mx',  'Guillermo Hernández','',               'consulta',  null,  true)
+;
+update _roster set email = lower(email);
+
+-- ===== De aquí para abajo NO necesitas editar nada =====
+
+-- ---------- 2. Crea usuarios nuevos (con fix de tokens GoTrue) ----------
+-- Tokens en '' (NO NULL) o el login truena con error 500. Password vacía en
+-- un usuario nuevo => 'CAMBIAME-1234' por defecto (resetéala luego).
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
   confirmation_token, recovery_token, email_change, email_change_token_new,
   email_change_token_current, phone_change, phone_change_token, reauthentication_token)
-select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
-  'authenticated', lower(v.email), extensions.crypt(v.password, extensions.gen_salt('bf')), now(),
+select '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+  r.email, extensions.crypt(coalesce(nullif(r.password,''),'CAMBIAME-1234'), extensions.gen_salt('bf')), now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  jsonb_build_object('nombre', v.nombre), now(), now(),
+  jsonb_build_object('nombre', r.nombre), now(), now(),
   '', '', '', '', '', '', '', ''
-from (values
-  -- ( correo,                     contraseña inicial,   nombre )
-  ('randall@kenetsolar.com',      'CAMBIAME-1234',      'Randall Cruz'),
-  ('rcc622@gmail.com',            'CAMBIAME-1234',      'Randall (pruebas)')
-  -- ,('lesly@kenet.mx',          'CAMBIAME-1234',      'Lesly Palacios')
-  -- ,('alondra@kenet.mx',        'CAMBIAME-1234',      'Alondra Hernández')
-) as v(email, password, nombre)
-where not exists (select 1 from auth.users u where u.email = lower(v.email));
+from _roster r
+where not exists (select 1 from auth.users u where u.email = r.email);
 
--- 1b) REPARACIONES (idempotentes, no editan nada que ya esté bien):
--- identidad email faltante = login imposible; tokens NULL = error 500.
+-- ---------- 3. Identidad email faltante (sin ella el login es imposible) ----------
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, created_at, updated_at)
 select gen_random_uuid(), u.id, u.id::text,
        jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true),
        'email', now(), now()
   from auth.users u
+  join _roster r on r.email = u.email
   left join auth.identities i on i.user_id = u.id and i.provider = 'email'
  where i.id is null;
 
-update auth.users set
-  confirmation_token         = coalesce(confirmation_token, ''),
-  recovery_token             = coalesce(recovery_token, ''),
-  email_change               = coalesce(email_change, ''),
-  email_change_token_new     = coalesce(email_change_token_new, ''),
-  email_change_token_current = coalesce(email_change_token_current, ''),
-  phone_change               = coalesce(phone_change, ''),
-  phone_change_token         = coalesce(phone_change_token, ''),
-  reauthentication_token     = coalesce(reauthentication_token, '');
+-- ---------- 4. Sanea tokens NULL preexistentes (idempotente) ----------
+update auth.users u set
+  confirmation_token         = coalesce(u.confirmation_token, ''),
+  recovery_token             = coalesce(u.recovery_token, ''),
+  email_change               = coalesce(u.email_change, ''),
+  email_change_token_new     = coalesce(u.email_change_token_new, ''),
+  email_change_token_current = coalesce(u.email_change_token_current, ''),
+  phone_change               = coalesce(u.phone_change, ''),
+  phone_change_token         = coalesce(u.phone_change_token, ''),
+  reauthentication_token     = coalesce(u.reauthentication_token, '')
+from _roster r where r.email = u.email;
 
--- 2) BACKFILL: crea profiles para auth.users que no tengan uno.
-insert into public.profiles (id, email, role)
-select u.id, u.email, 'operativo'
-  from auth.users u
-  left join public.profiles p on p.id = u.id
- where p.id is null;
+-- ---------- 5. Sincroniza CONTRASEÑA (solo si el roster trae una) ----------
+update auth.users u
+   set encrypted_password = extensions.crypt(r.password, extensions.gen_salt('bf'))
+from _roster r
+where r.email = u.email and coalesce(r.password,'') <> '';
 
--- 3) GO / DIRECCIÓN
-update public.profiles set role='go', full_name='Randall Cruz'
- where email='randall@kenetsolar.com';
-update public.profiles set role='go', full_name='Randall (pruebas)'
- where email='rcc622@gmail.com';
--- update public.profiles set role='consulta', full_name='Guillermo Hernández'
---  where email='CORREO_GUILLERMO';
+-- ---------- 6. Sincroniza NOMBRE en auth (metadata) ----------
+update auth.users u
+   set raw_user_meta_data = jsonb_set(coalesce(u.raw_user_meta_data,'{}'::jsonb), '{nombre}', to_jsonb(r.nombre))
+from _roster r
+where r.email = u.email and coalesce(r.nombre,'') <> '';
 
--- 4) EQUIPO POR ZONA (roles: go | coordinador | operativo | consulta;
---    zonas: MTY | SLT | TRC | MVA; sin zone = todas)
+-- ---------- 7. Activa / bloquea según `activo` ----------
+update auth.users u
+   set banned_until = case when r.activo then null else 'infinity'::timestamptz end
+from _roster r
+where r.email = u.email;
 
--- Nodo R2 — Torreón
--- update public.profiles set role='operativo', full_name='Lesly Palacios',    zone='TRC' where email='lesly@kenet.mx';
--- update public.profiles set role='operativo', full_name='Alondra Hernández', zone='TRC' where email='alondra@kenet.mx';
+-- ---------- 8. Sincroniza PERFIL (rol, zona, nombre) — declarativo ----------
+insert into public.profiles (id, email, full_name, role, zone)
+select u.id, u.email, r.nombre, r.role, r.zone
+  from _roster r
+  join auth.users u on u.email = r.email
+on conflict (id) do update
+   set email     = excluded.email,
+       full_name = excluded.full_name,
+       role      = excluded.role,
+       zone      = excluded.zone,
+       updated_at = now();
 
--- Nodo R2 — Monclova
--- update public.profiles set role='operativo', full_name='Iván Gallegos',     zone='MVA' where email='CORREO_IVAN';
-
--- Nodo R1 — Monterrey (entra en F3)
--- update public.profiles set role='coordinador', full_name='Coordinador Mesa', zone='MTY' where email='...';
-
--- 5) CONTRASEÑAS — un renglón por persona, edita y corre solo los que
---    quieras cambiar (re-correr el mismo renglón no hace daño):
--- update auth.users set encrypted_password = extensions.crypt('NuevaPass-99', extensions.gen_salt('bf')) where email='randall@kenetsolar.com';
--- update auth.users set encrypted_password = extensions.crypt('OtraPass-99',  extensions.gen_salt('bf')) where email='lesly@kenet.mx';
-
---    Lote con contraseña COMÚN (patrón Comisiones) — ⚠ en la Mesa la
---    bitácora atribuye por usuario; contraseña compartida = autoría negable:
--- update auth.users set encrypted_password = extensions.crypt('comun123', extensions.gen_salt('bf'))
---  where email in ('a@kenet.mx','b@kenet.mx');
-
--- 6) RECETAS SUELTAS (descomenta, edita, corre)
-
--- 6a) CAMBIAR CORREO (3 renglones, en este orden):
--- update auth.users set email='nuevo@kenet.mx' where email='viejo@kenet.mx';
--- update auth.identities set identity_data = jsonb_set(identity_data,'{email}','"nuevo@kenet.mx"')
---  where provider='email' and user_id=(select id from auth.users where email='nuevo@kenet.mx');
--- update public.profiles set email='nuevo@kenet.mx' where email='viejo@kenet.mx';
-
--- 6b) CAMBIAR NOMBRE (2 renglones):
--- update public.profiles set full_name='Nombre Nuevo' where email='persona@kenet.mx';
--- update auth.users set raw_user_meta_data = jsonb_set(coalesce(raw_user_meta_data,'{}'),'{nombre}','"Nombre Nuevo"')
---  where email='persona@kenet.mx';
-
--- 6c) BAJA POR ROTACIÓN (bloquea, conserva historial — NO borrar):
--- update auth.users set banned_until='infinity' where email='exempleado@kenet.mx';
-
--- 6d) REACTIVAR:
--- update auth.users set banned_until=null where email='persona@kenet.mx';
-
--- 6e) ELIMINAR DE RAÍZ (solo basura/typos; el dashboard falla por FKs —
---     estos 8 deletes limpian todo; corre el bloque completo):
--- delete from auth.mfa_amr_claims where session_id in (select id from auth.sessions where user_id = (select id from auth.users where email='typo@x.com'));
--- delete from auth.mfa_challenges where factor_id in (select id from auth.mfa_factors where user_id = (select id from auth.users where email='typo@x.com'));
--- delete from auth.mfa_factors    where user_id = (select id from auth.users where email='typo@x.com');
--- delete from auth.refresh_tokens where user_id = (select id from auth.users where email='typo@x.com')::text;
--- delete from auth.sessions       where user_id = (select id from auth.users where email='typo@x.com');
--- delete from auth.one_time_tokens where user_id = (select id from auth.users where email='typo@x.com');
--- delete from auth.identities     where user_id = (select id from auth.users where email='typo@x.com');
--- delete from auth.users          where email='typo@x.com';
-
--- 7) VERIFICACIÓN
+-- ---------- 9. VERIFICACIÓN (lo que quedó) ----------
 select p.role, p.zone, p.full_name, p.email,
-       u.banned_until is not null and u.banned_until > now() as bloqueado,
+       (u.banned_until is not null and u.banned_until > now()) as bloqueado,
        u.last_sign_in_at
-  from public.profiles p
-  join auth.users u on u.id = p.id
+  from _roster r
+  join auth.users u     on u.email = r.email
+  join public.profiles p on p.id = u.id
  order by p.role desc, p.zone nulls last, p.full_name nulls last;
 
--- 8) (OPCIONAL, una vez) Limpiar las funciones go_* del enfoque anterior:
--- drop function if exists go_crear_usuario(text,text,text);
--- drop function if exists go_crear_usuario(text,text,text,text,text);
--- drop function if exists go_cambiar_password(text,text);
--- drop function if exists go_cambiar_correo(text,text);
--- drop function if exists go_cambiar_nombre(text,text);
--- drop function if exists go_cambiar_rol(text,text);
--- drop function if exists go_cambiar_zona(text,text);
--- drop function if exists go_bloquear_usuario(text);
--- drop function if exists go_reactivar_usuario(text);
--- drop function if exists go_eliminar_usuario(text);
--- drop function if exists go_ver_usuarios();
+drop table _roster;
+
+-- =====================================================================
+-- RECETA RARA (fuera del roster) — BORRAR DE RAÍZ un usuario typo/basura.
+-- El dashboard de Supabase falla por las FKs; estos 8 deletes limpian todo.
+-- Úsalo SOLO para basura; para una baja normal usa activo=false en el roster.
+-- =====================================================================
+-- delete from auth.mfa_amr_claims where session_id in (select id from auth.sessions where user_id=(select id from auth.users where email='typo@x.com'));
+-- delete from auth.mfa_challenges where factor_id in (select id from auth.mfa_factors where user_id=(select id from auth.users where email='typo@x.com'));
+-- delete from auth.mfa_factors    where user_id=(select id from auth.users where email='typo@x.com');
+-- delete from auth.refresh_tokens where user_id=(select id from auth.users where email='typo@x.com')::text;
+-- delete from auth.sessions       where user_id=(select id from auth.users where email='typo@x.com');
+-- delete from auth.one_time_tokens where user_id=(select id from auth.users where email='typo@x.com');
+-- delete from public.profiles     where email='typo@x.com';
+-- delete from auth.identities     where user_id=(select id from auth.users where email='typo@x.com');
+-- delete from auth.users          where email='typo@x.com';

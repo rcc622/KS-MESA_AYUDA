@@ -1,12 +1,12 @@
-export default function Sidebar({ vista, setVista }) {
+export default function Sidebar({ vista, setVista, onLogout, usuario }) {
   const navItems = [
-    { id: 'agenda', icon: '📅', label: 'Agenda / SLA', section: 'Instalaciones' },
-    { id: 'reagendados', icon: '🔄', label: 'Reagendados', badge: 2, section: null },
-    { id: 'detalle', icon: '📋', label: 'Detalle Proyecto', section: null },
-    { id: 'reporte', icon: '📱', label: 'Reporte Instalador', section: null },
-    { id: 'import', icon: '📤', label: 'Importar Proyectos', section: 'Datos' },
-    { id: 'cortes', icon: '💰', label: 'Cortes de Pago', section: 'Finanzas' },
-    { id: 'cuadrillas', icon: '👷', label: 'Config. Cuadrillas', section: 'Configuración' },
+    { id: 'agenda',      icon: '📅', label: 'Agenda / SLA',       section: 'Instalaciones' },
+    { id: 'reagendados', icon: '🔄', label: 'Reagendados',         section: null },
+    { id: 'detalle',     icon: '📋', label: 'Detalle Proyecto',    section: null },
+    { id: 'reporte',     icon: '📱', label: 'Reporte Instalador',  section: null },
+    { id: 'import',      icon: '📤', label: 'Importar Proyectos',  section: 'Datos' },
+    { id: 'cortes',      icon: '💰', label: 'Cortes de Pago',      section: 'Finanzas' },
+    { id: 'cuadrillas',  icon: '👷', label: 'Config. Cuadrillas',  section: 'Configuración' },
   ];
 
   return (
@@ -18,24 +18,28 @@ export default function Sidebar({ vista, setVista }) {
       <nav className="sidebar-nav">
         {navItems.map((item) => (
           <div key={item.id}>
-            {item.section && (
-              <div className="nav-section-label">{item.section}</div>
-            )}
+            {item.section && <div className="nav-section-label">{item.section}</div>}
             <button
               className={`nav-item${vista === item.id ? ' active' : ''}`}
               onClick={() => setVista(item.id)}
             >
               <span className="icon">{item.icon}</span>
               <span>{item.label}</span>
-              {item.badge && <span className="badge">{item.badge}</span>}
             </button>
           </div>
         ))}
       </nav>
       <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>Sesión activa</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Lizeth Garza</div>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>PM Doméstico · MTY</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 600, marginBottom: 8, wordBreak: 'break-word' }}>
+          {usuario?.email}
+        </div>
+        <button
+          onClick={onLogout}
+          style={{ width: '100%', background: 'rgba(255,255,255,0.08)', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 12, padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}
+        >
+          Cerrar sesión
+        </button>
       </div>
     </aside>
   );

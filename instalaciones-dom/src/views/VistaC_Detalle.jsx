@@ -98,7 +98,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
     try {
       await actualizarProyecto(proyecto.id, {
         fecha_agenda: fechaAgenda,
-        estatus: proyecto.estatus === 'reagendado' ? 'agendado' : proyecto.estatus,
+        estatus: 'agendado',   // al agendar/cambiar fecha el proyecto queda agendado (no "en progreso")
         dias_en_etapa: 0,
       });
       await agregarBitacora({

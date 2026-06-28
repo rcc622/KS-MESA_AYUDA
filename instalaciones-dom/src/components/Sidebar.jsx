@@ -26,7 +26,7 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
             <Icon name="sun" size={20} strokeWidth={2} className="brand-sun" />
             <div>
               <h1>KENET Solar</h1>
-              <span>{esInstalador ? 'Instalador · Campo' : 'Mesa de Control · Instalaciones'}</span>
+              <span>{({ admin: 'Admin · Mesa de Control', pm_domestico: 'PM · Instalaciones', coordinador: 'Coordinador · Mesa', instalador: 'Instalador · Campo' })[rol] || 'Mesa de Control · Instalaciones'}</span>
             </div>
           </div>
           <button className="drawer-close" onClick={onClose} aria-label="Cerrar menú">

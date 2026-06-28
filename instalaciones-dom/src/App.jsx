@@ -14,10 +14,13 @@ import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 
 // Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
 // de campo; los demás roles ven la plataforma completa.
-const TODAS_VISTAS = ['agenda', 'reagendados', 'detalle', 'reporte', 'import', 'cortes', 'cuadrillas'];
 function vistasPorRol(rol) {
-  if (rol === 'instalador') return ['reporte'];
-  return TODAS_VISTAS;
+  if (rol === 'instalador') return ['reporte'];   // solo su módulo de campo
+  // admin / pm_domestico / coordinador: todo MENOS el reporte de campo (lo llena el instalador)
+  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas'];
+}
+function rolLabel(rol) {
+  return ({ admin: 'Admin', pm_domestico: 'PM', coordinador: 'Coordinador', instalador: 'Instalador' })[rol] || 'Usuario';
 }
 
 export default function App() {
@@ -165,6 +168,11 @@ export default function App() {
           <div className="mobile-topbar-title">
             <Icon name="sun" size={18} strokeWidth={2} />
             KENET Solar
+            {usuarioActual?.rol && (
+              <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: 'rgba(245,166,35,0.22)', color: 'var(--ambar)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                {rolLabel(usuarioActual.rol)}
+              </span>
+            )}
           </div>
         </header>
         {renderVista()}

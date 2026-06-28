@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { upsertProyectos, agregarBitacora } from '../lib/api';
+import { upsertProyectos, agregarBitacora, mensajeError } from '../lib/api';
 
 export default function VistaE_Import({ usuarioActual }) {
   const [fuente, setFuente] = useState('csv');
@@ -92,7 +92,7 @@ export default function VistaE_Import({ usuarioActual }) {
       setResultado({ total: data.length, archivo: archivo.name });
       setEtapa('resultado');
     } catch (e) {
-      alert('Error al importar: ' + e.message);
+      alert('Error al importar: ' + mensajeError(e));
     } finally {
       setImportando(false);
     }

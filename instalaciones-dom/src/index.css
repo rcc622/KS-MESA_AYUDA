@@ -92,6 +92,7 @@ body {
 .main-content {
   margin-left: var(--sidebar-w);
   flex: 1;
+  min-width: 0;            /* evita que el contenido (tabla) ensanche la página */
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -390,6 +391,9 @@ textarea { resize: vertical; min-height: 80px; }
     z-index: 90;
   }
   .main-content { margin-left: 0; }
+  /* Red de seguridad anti-desborde horizontal en móvil */
+  .app-layout { overflow-x: hidden; }
+  .page-body, .table-wrap { max-width: 100%; }
 
   /* Barra superior con hamburguesa */
   .mobile-topbar {

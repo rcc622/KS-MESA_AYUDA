@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCortes, getSemanas, actualizarCorte, agregarVuelta } from '../lib/api';
+import { getCortes, getSemanas, actualizarCorte, agregarVuelta, mensajeError } from '../lib/api';
 import Modal from '../components/Modal';
 
 const KPIS_LABELS = {
@@ -61,7 +61,7 @@ export default function VistaI_Cortes() {
       setNuevaVuelta({ concepto: '', monto: '' });
       cargar();
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }

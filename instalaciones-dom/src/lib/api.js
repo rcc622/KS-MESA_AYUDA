@@ -103,6 +103,22 @@ export async function getUsuarios({ rol, zona } = {}) {
   return data;
 }
 
+// Traduce errores técnicos de Postgres/PostgREST a mensajes claros en español.
+export function mensajeError(e) {
+  const m = e?.message || String(e || '');
+  if (/duplicate key/i.test(m) && /folio/i.test(m)) return 'Ya existe un proyecto con ese folio. Usa un folio diferente.';
+  if (/duplicate key/i.test(m)) return 'Ese registro ya existe (valor duplicado).';
+  const col = m.match(/Could not find the '([^']+)' column/);
+  if (col) return `Falta la columna "${col[1]}" en la base de datos. Corre la migración SQL (sql/migracion_completa.sql) y vuelve a intentar.`;
+  if (/invalid input syntax for type date/i.test(m)) return 'Hay una fecha inválida. Revisa los campos de fecha.';
+  if (/invalid input syntax for type (integer|numeric)/i.test(m)) return 'Hay un número inválido. Revisa los campos numéricos.';
+  if (/violates foreign key/i.test(m)) return 'Un dato relacionado no existe (referencia inválida).';
+  if (/violates check constraint/i.test(m)) return 'Un valor no es válido para ese campo.';
+  if (/violates not-null constraint/i.test(m)) return 'Falta un campo obligatorio.';
+  if (/JWT|permission denied|row-level security|RLS/i.test(m)) return 'No tienes permiso para esta acción.';
+  return 'No se pudo guardar: ' + m;
+}
+
 // Mapea el usuario logueado (Supabase Auth) a su fila en la tabla `usuarios`
 // por email. Devuelve null si no existe (la bitácora acepta usuario_id null).
 export async function getUsuarioPorEmail(email) {

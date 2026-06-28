@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProyectos, actualizarProyecto, agregarBitacora } from '../lib/api';
+import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError } from '../lib/api';
 import SLABadge from '../components/SLABadge';
 import Modal from '../components/Modal';
 
@@ -50,7 +50,7 @@ export default function VistaD_Reagendados({ setVista, setProyectoSeleccionado, 
       setModalReagendar(false);
       cargar();
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }

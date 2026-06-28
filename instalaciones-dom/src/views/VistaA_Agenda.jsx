@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProyectos, getCuadrillas, crearProyecto, agregarBitacora } from '../lib/api';
+import { getProyectos, getCuadrillas, crearProyecto, agregarBitacora, mensajeError } from '../lib/api';
 import SLABadge from '../components/SLABadge';
 import EstatusBadge from '../components/EstatusBadge';
 import Modal from '../components/Modal';
@@ -99,7 +99,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
       setNuevoProy(PROY_VACIO);
       cargar();
     } catch (e) {
-      alert('Error al guardar: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }

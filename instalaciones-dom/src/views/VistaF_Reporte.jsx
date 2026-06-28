@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProyectos, actualizarProyecto, agregarBitacora } from '../lib/api';
+import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError } from '../lib/api';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 
@@ -100,7 +100,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
       });
       setEnviado(true);
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setEnviando(false);
     }

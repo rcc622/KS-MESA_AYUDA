@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getBitacora, agregarBitacora, actualizarProyecto } from '../lib/api';
+import { getBitacora, agregarBitacora, actualizarProyecto, mensajeError } from '../lib/api';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import Modal from '../components/Modal';
@@ -86,7 +86,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
         await actualizarProyecto(proyecto.id, { estatus: 'en_progreso' });
       }
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }
@@ -112,7 +112,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
       setFechaAgenda('');
       cargarBitacora();
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }
@@ -149,7 +149,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
       setModalReag(false);
       cargarBitacora();
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert(mensajeError(e));
     } finally {
       setGuardando(false);
     }

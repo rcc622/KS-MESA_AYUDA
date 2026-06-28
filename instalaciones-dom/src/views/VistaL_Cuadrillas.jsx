@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getCuadrillas, getUsuarios, crearCuadrilla, actualizarCuadrilla, crearRegla, eliminarRegla } from '../lib/api';
+import { getCuadrillas, getUsuarios, crearCuadrilla, actualizarCuadrilla, crearRegla, eliminarRegla, mensajeError } from '../lib/api';
 import Modal from '../components/Modal';
 
 const ZONAS = ['MTY', 'SLT', 'TRC', 'MVA'];
@@ -70,7 +70,7 @@ export default function VistaL_Cuadrillas() {
       else        await crearCuadrilla(payload);
       cerrarModal();
       cargar();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { alert(mensajeError(e)); }
     finally { setGuardando(false); }
   };
 
@@ -91,7 +91,7 @@ export default function VistaL_Cuadrillas() {
       setModalRegla(null);
       setFormR({ kpi: 'instalaciones_a_tiempo', meta: '', consecuencia: 'descuento_pago', valor: '' });
       cargar();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) { alert(mensajeError(e)); }
     finally { setGuardando(false); }
   };
 

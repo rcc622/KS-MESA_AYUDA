@@ -22,6 +22,8 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   const PROY_VACIO = {
     folio: '', folio_odoo: '', cliente: '', direccion: '',
     zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', notas: '',
+    panel_potencia_w: '', panel_marca: '',
+    inversor_tipo: '', inversor_cantidad: '', inversor_capacidad_kw: '', inversor_marca: '',
   };
   const [nuevoProy, setNuevoProy] = useState(PROY_VACIO);
 
@@ -74,6 +76,12 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         fecha_agenda: nuevoProy.fecha_agenda || null,
         paneles,
         kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,   // auto: paneles × 600 W
+        panel_potencia_w:      nuevoProy.panel_potencia_w ? parseInt(nuevoProy.panel_potencia_w) : null,
+        panel_marca:           nuevoProy.panel_marca || null,
+        inversor_tipo:         nuevoProy.inversor_tipo || null,
+        inversor_cantidad:     nuevoProy.inversor_cantidad ? parseInt(nuevoProy.inversor_cantidad) : null,
+        inversor_capacidad_kw: nuevoProy.inversor_capacidad_kw ? parseFloat(nuevoProy.inversor_capacidad_kw) : null,
+        inversor_marca:        nuevoProy.inversor_marca || null,
         cuadrilla_id: nuevoProy.cuadrilla_id || null,
         estatus: 'agendado',
         dias_en_etapa: 0,
@@ -245,10 +253,47 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           </div>
           <div className="form-row">
             <div className="form-group">
+              <label>Potencia por panel (W)</label>
+              <input type="number" placeholder="600" value={nuevoProy.panel_potencia_w} onChange={e => setNuevoProy(p => ({ ...p, panel_potencia_w: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Marca de panel</label>
+              <input type="text" placeholder="Ej: Trina, JA Solar" value={nuevoProy.panel_marca} onChange={e => setNuevoProy(p => ({ ...p, panel_marca: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
               <label>Tamaño del sistema (kWp) <span className="text-gray text-xs">· automático · {WATTS_POR_PANEL} W/panel</span></label>
               <input type="text" value={kwpAuto !== '' ? `${kwpAuto} kWp` : '—'} readOnly disabled />
             </div>
           </div>
+
+          <div className="form-section-label">Inversor</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Tipo</label>
+              <select value={nuevoProy.inversor_tipo} onChange={e => setNuevoProy(p => ({ ...p, inversor_tipo: e.target.value }))}>
+                <option value="">Selecciona…</option>
+                <option value="inversor">Inversor</option>
+                <option value="microinversor">Microinversor</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Cantidad de inversores</label>
+              <input type="number" min="0" placeholder="1" value={nuevoProy.inversor_cantidad} onChange={e => setNuevoProy(p => ({ ...p, inversor_cantidad: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Capacidad del inversor (kW)</label>
+              <input type="number" step="0.1" placeholder="5.0" value={nuevoProy.inversor_capacidad_kw} onChange={e => setNuevoProy(p => ({ ...p, inversor_capacidad_kw: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Marca de inversor</label>
+              <input type="text" placeholder="Ej: Growatt, Huawei" value={nuevoProy.inversor_marca} onChange={e => setNuevoProy(p => ({ ...p, inversor_marca: e.target.value }))} />
+            </div>
+          </div>
+
           <div className="form-group">
             <label>Notas</label>
             <textarea value={nuevoProy.notas} onChange={e => setNuevoProy(p => ({ ...p, notas: e.target.value }))} rows={2} />

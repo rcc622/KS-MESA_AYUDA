@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS proyectos (
   kw                    NUMERIC(6,2),   -- tamaño del sistema (kWp)
   panel_potencia_w      INTEGER,        -- potencia por panel (W)
   panel_marca           TEXT,
+  inversor_tipo         TEXT,           -- 'inversor' | 'microinversor'
+  inversor_cantidad     INTEGER,
   inversor_capacidad_kw NUMERIC(6,2),
   inversor_marca        TEXT,
   anticipo_pagado   BOOLEAN DEFAULT false,

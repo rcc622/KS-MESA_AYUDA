@@ -12,6 +12,14 @@ import VistaF_Reporte from './views/VistaF_Reporte';
 import VistaI_Cortes from './views/VistaI_Cortes';
 import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 
+// Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
+// de campo; los demás roles ven la plataforma completa.
+const TODAS_VISTAS = ['agenda', 'reagendados', 'detalle', 'reporte', 'import', 'cortes', 'cuadrillas'];
+function vistasPorRol(rol) {
+  if (rol === 'instalador') return ['reporte'];
+  return TODAS_VISTAS;
+}
+
 export default function App() {
   const [vista, setVista] = useState('agenda');
   const [navOpen, setNavOpen] = useState(false);
@@ -61,6 +69,13 @@ export default function App() {
     return () => { document.body.style.overflow = ''; };
   }, [navOpen]);
 
+  // Redirige a una vista permitida si el rol no puede ver la actual
+  useEffect(() => {
+    if (!usuarioActual) return;
+    const permitidas = vistasPorRol(usuarioActual.rol);
+    if (!permitidas.includes(vista)) setVista(permitidas[0]);
+  }, [usuarioActual, vista]);
+
   if (authLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--fondo)' }}>
@@ -104,6 +119,17 @@ export default function App() {
     );
   }
 
+  if (!usuarioActual) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--fondo)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>☀️</div>
+          <div style={{ color: 'var(--gris-secundario)' }}>Cargando tu cuenta…</div>
+        </div>
+      </div>
+    );
+  }
+
   const props = { setVista, setProyectoSeleccionado, usuarioActual };
 
   const renderVista = () => {
@@ -126,6 +152,8 @@ export default function App() {
         setVista={setVista}
         onLogout={handleLogout}
         usuario={session.user}
+        rol={usuarioActual?.rol}
+        vistasPermitidas={vistasPorRol(usuarioActual?.rol)}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />

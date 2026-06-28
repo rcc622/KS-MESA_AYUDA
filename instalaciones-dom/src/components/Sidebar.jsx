@@ -1,15 +1,16 @@
 import Icon from './Icon';
 
-export default function Sidebar({ vista, setVista, onLogout, usuario, open, onClose }) {
+export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vistasPermitidas, open, onClose }) {
+  const esInstalador = rol === 'instalador';
   const navItems = [
     { id: 'agenda',      icon: 'calendar',   label: 'Agenda / SLA',       section: 'Instalaciones' },
     { id: 'reagendados', icon: 'refresh',    label: 'Reagendados',         section: null },
     { id: 'detalle',     icon: 'clipboard',  label: 'Detalle Proyecto',    section: null },
-    { id: 'reporte',     icon: 'smartphone', label: 'Reporte Instalador',  section: null },
+    { id: 'reporte',     icon: 'smartphone', label: esInstalador ? 'Mis instalaciones' : 'Reporte Instalador',  section: esInstalador ? 'Campo' : null },
     { id: 'import',      icon: 'upload',     label: 'Importar Proyectos',  section: 'Datos' },
     { id: 'cortes',      icon: 'dollar',     label: 'Cortes de Pago',      section: 'Finanzas' },
     { id: 'cuadrillas',  icon: 'users',      label: 'Config. Cuadrillas',  section: 'Configuración' },
-  ];
+  ].filter(i => !vistasPermitidas || vistasPermitidas.includes(i.id));
 
   const handleNav = (id) => {
     setVista(id);
@@ -25,7 +26,7 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, open, onCl
             <Icon name="sun" size={20} strokeWidth={2} className="brand-sun" />
             <div>
               <h1>KENET Solar</h1>
-              <span>Mesa de Control · Instalaciones</span>
+              <span>{esInstalador ? 'Instalador · Campo' : 'Mesa de Control · Instalaciones'}</span>
             </div>
           </div>
           <button className="drawer-close" onClick={onClose} aria-label="Cerrar menú">

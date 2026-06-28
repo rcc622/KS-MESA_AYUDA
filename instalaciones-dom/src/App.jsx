@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './lib/supabase';
 import Sidebar from './components/Sidebar';
+import Icon from './components/Icon';
 import VistaA_Agenda from './views/VistaA_Agenda';
 import VistaC_Detalle from './views/VistaC_Detalle';
 import VistaD_Reagendados from './views/VistaD_Reagendados';
@@ -40,6 +41,12 @@ export default function App() {
   };
 
   const handleLogout = () => supabase.auth.signOut();
+
+  // Bloquea el scroll del fondo mientras el drawer móvil está abierto
+  useEffect(() => {
+    document.body.style.overflow = navOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [navOpen]);
 
   if (authLoading) {
     return (
@@ -113,8 +120,13 @@ export default function App() {
       />
       <main className="main-content">
         <header className="mobile-topbar">
-          <button className="hamburger" onClick={() => setNavOpen(true)} aria-label="Abrir menú">☰</button>
-          <div className="mobile-topbar-title">☀️ KENET Solar</div>
+          <button className="hamburger" onClick={() => setNavOpen(true)} aria-label="Abrir menú">
+            <Icon name="menu" size={24} strokeWidth={2} />
+          </button>
+          <div className="mobile-topbar-title">
+            <Icon name="sun" size={18} strokeWidth={2} />
+            KENET Solar
+          </div>
         </header>
         {renderVista()}
       </main>

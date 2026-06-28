@@ -20,9 +20,14 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
   const [nota, setNota] = useState('');
   const [tipoNota, setTipoNota] = useState('nota');
   const [guardando, setGuardando] = useState(false);
+  const [modalFecha, setModalFecha] = useState(false);
+  const [fechaAgenda, setFechaAgenda] = useState('');
+  const [fechaMostrada, setFechaMostrada] = useState(proyecto?.fecha_agenda || null);
+  const esAdmin = usuarioActual?.rol === 'admin';
 
   const cargarBitacora = useCallback(async () => {
     if (!proyecto) return;
+    setFechaMostrada(proyecto.fecha_agenda || null);
     setLoading(true);
     try {
       const data = await getBitacora(proyecto.id);
@@ -77,6 +82,32 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
     }
   };
 
+  const handleAgendarFecha = async () => {
+    if (!fechaAgenda) return;
+    setGuardando(true);
+    try {
+      await actualizarProyecto(proyecto.id, {
+        fecha_agenda: fechaAgenda,
+        estatus: proyecto.estatus === 'reagendado' ? 'agendado' : proyecto.estatus,
+        dias_en_etapa: 0,
+      });
+      await agregarBitacora({
+        proyecto_id: proyecto.id,
+        tipo: 'agenda',
+        descripcion: `Fecha de instalación agendada: ${fechaAgenda}`,
+        usuario_id: usuarioActual?.id ?? null,
+      });
+      setFechaMostrada(fechaAgenda);
+      setModalFecha(false);
+      setFechaAgenda('');
+      cargarBitacora();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const cuadrilla = proyecto.cuadrilla;
   const instalador = proyecto.instalador;
 
@@ -117,7 +148,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
                   <div className="info-item"><div className="info-label">OV Odoo</div><div className="info-val">{proyecto.folio_odoo || '—'}</div></div>
                   <div className="info-item"><div className="info-label">Zona</div><div className="info-val"><span className="badge badge-zona">{proyecto.zona}</span></div></div>
                   <div className="info-item"><div className="info-label">Paneles / kW</div><div className="info-val">{proyecto.paneles ?? '—'} pnl · {proyecto.kw ?? '—'} kW</div></div>
-                  <div className="info-item"><div className="info-label">Fecha agenda</div><div className="info-val">{proyecto.fecha_agenda || '—'}</div></div>
+                  <div className="info-item"><div className="info-label">Fecha agenda</div><div className="info-val">{fechaMostrada || '—'}</div></div>
                   <div className="info-item"><div className="info-label">Fecha instalación</div><div className="info-val">{proyecto.fecha_instalacion || '—'}</div></div>
                   <div className="info-item" style={{ gridColumn: '1/-1' }}><div className="info-label">Dirección</div><div className="info-val" style={{ fontWeight: 400 }}>{proyecto.direccion || '—'}</div></div>
                 </div>
@@ -208,6 +239,11 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
             <div className="card">
               <div className="card-header"><h3>Acciones rápidas</h3></div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {esAdmin && (
+                  <button className="btn btn-ambar w-full" onClick={() => { setFechaAgenda(fechaMostrada || ''); setModalFecha(true); }}>
+                    📅 {fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha'}
+                  </button>
+                )}
                 <button className="btn btn-outline w-full" onClick={() => setModalNota(true)}>📝 Agregar nota</button>
                 <button className="btn btn-outline w-full" onClick={() => setVista('reagendados')}>🔄 Reagendar</button>
                 <hr className="divider" />
@@ -224,6 +260,28 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={modalFecha}
+        onClose={() => setModalFecha(false)}
+        title={fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha de instalación'}
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setModalFecha(false)}>Cancelar</button>
+            <button className="btn btn-ambar" onClick={handleAgendarFecha} disabled={!fechaAgenda || guardando}>
+              {guardando ? 'Guardando…' : 'Guardar fecha'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-group">
+          <label>Fecha de instalación</label>
+          <input type="date" value={fechaAgenda} onChange={e => setFechaAgenda(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '6px 10px', background: '#F9FAFB', borderRadius: 6 }}>
+          Se registra en la bitácora. La cuadrilla asignada la verá como su próxima instalación.
+        </div>
+      </Modal>
 
       <Modal
         open={modalNota}

@@ -21,6 +21,7 @@ export default function VistaL_Cuadrillas() {
   const [loading, setLoading] = useState(true);
   const [expandida, setExpandida] = useState(null);
   const [modalNueva, setModalNueva] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [modalRegla, setModalRegla] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -42,13 +43,26 @@ export default function VistaL_Cuadrillas() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const handleCrearCuadrilla = async () => {
+  const resetForm = () => setFormC({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
+
+  const abrirNueva = () => { setEditId(null); resetForm(); setModalNueva(true); };
+
+  const abrirEditar = (c) => {
+    setEditId(c.id);
+    setFormC({ nombre: c.nombre, tipo: c.tipo, zona: c.zona, pm_id: c.pm_id || '', aplica_vueltas: c.aplica_vueltas, esquema_pago: c.esquema_pago });
+    setModalNueva(true);
+  };
+
+  const cerrarModal = () => { setModalNueva(false); setEditId(null); resetForm(); };
+
+  const handleGuardarCuadrilla = async () => {
     if (!formC.nombre) return;
     setGuardando(true);
     try {
-      await crearCuadrilla({ ...formC, pm_id: formC.pm_id || null });
-      setModalNueva(false);
-      setFormC({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
+      const payload = { ...formC, pm_id: formC.pm_id || null };
+      if (editId) await actualizarCuadrilla(editId, payload);
+      else        await crearCuadrilla(payload);
+      cerrarModal();
       cargar();
     } catch (e) { alert('Error: ' + e.message); }
     finally { setGuardando(false); }
@@ -87,7 +101,7 @@ export default function VistaL_Cuadrillas() {
     <>
       <div className="page-header">
         <div><h2>👷 Configuración de Cuadrillas</h2><div className="sub">Equipos de instalación · KPIs y reglas por cuadrilla</div></div>
-        <button className="btn btn-ambar" onClick={() => setModalNueva(true)}>+ Nueva cuadrilla</button>
+        <button className="btn btn-ambar" onClick={abrirNueva}>+ Nueva cuadrilla</button>
       </div>
 
       <div className="page-body">
@@ -124,7 +138,10 @@ export default function VistaL_Cuadrillas() {
                 <div className="cuadrilla-card-body">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                     <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--gris-secundario)', marginBottom: 10 }}>Configuración</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--gris-secundario)' }}>Configuración</div>
+                        <button className="btn btn-outline btn-sm" onClick={() => abrirEditar(c)}>✏️ Editar</button>
+                      </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>PM responsable</span><strong>{pm?.nombre || '—'}</strong></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>Esquema de pago</span><strong>{ESQUEMAS.find(e => e.value === c.esquema_pago)?.label}</strong></div>
@@ -195,13 +212,13 @@ export default function VistaL_Cuadrillas() {
       {/* Modal nueva cuadrilla */}
       <Modal
         open={modalNueva}
-        onClose={() => setModalNueva(false)}
-        title="Nueva cuadrilla"
+        onClose={cerrarModal}
+        title={editId ? 'Editar cuadrilla' : 'Nueva cuadrilla'}
         footer={
           <>
-            <button className="btn btn-outline" onClick={() => setModalNueva(false)}>Cancelar</button>
-            <button className="btn btn-ambar" onClick={handleCrearCuadrilla} disabled={!formC.nombre || guardando}>
-              {guardando ? 'Guardando…' : 'Crear cuadrilla'}
+            <button className="btn btn-outline" onClick={cerrarModal}>Cancelar</button>
+            <button className="btn btn-ambar" onClick={handleGuardarCuadrilla} disabled={!formC.nombre || guardando}>
+              {guardando ? 'Guardando…' : (editId ? 'Guardar cambios' : 'Crear cuadrilla')}
             </button>
           </>
         }

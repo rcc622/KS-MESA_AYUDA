@@ -63,7 +63,9 @@ CREATE TABLE IF NOT EXISTS proyectos (
   fecha_agenda      DATE,
   fecha_instalacion DATE,
   fecha_original    DATE,          -- fecha antes del último reagendo
-  motivo_reagendo   TEXT,
+  motivo_reagendo   TEXT,           -- nota libre del reagende
+  reagenda_factor   TEXT,           -- 'interno' | 'externo'
+  reagenda_motivo   TEXT,           -- interno: material|instalador · externo: clima|cliente
   dias_en_etapa     INTEGER DEFAULT 0,
   paneles               INTEGER,
   kw                    NUMERIC(6,2),   -- tamaño del sistema (kWp)

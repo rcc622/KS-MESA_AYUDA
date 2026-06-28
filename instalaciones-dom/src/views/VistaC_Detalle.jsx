@@ -4,6 +4,11 @@ import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import Modal from '../components/Modal';
 
+const FACTORES = {
+  interno: { label: 'Interno (KENET)', motivos: [['material', 'Falta de material'], ['instalador', 'Instalador / cuadrilla']] },
+  externo: { label: 'Externo',         motivos: [['clima', 'Clima'], ['cliente', 'Cliente']] },
+};
+
 const TIPOS_BITACORA = {
   agenda:   { label: 'Agendado',    icon: '📅', color: '#1F4E79' },
   inicio:   { label: 'Inicio',      icon: '🔧', color: '#F5A623' },
@@ -23,6 +28,11 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
   const [modalFecha, setModalFecha] = useState(false);
   const [fechaAgenda, setFechaAgenda] = useState('');
   const [fechaMostrada, setFechaMostrada] = useState(proyecto?.fecha_agenda || null);
+  const [modalReag, setModalReag] = useState(false);
+  const [reagFecha, setReagFecha] = useState('');
+  const [reagFactor, setReagFactor] = useState('');
+  const [reagMotivo, setReagMotivo] = useState('');
+  const [reagNota, setReagNota] = useState('');
   const esAdmin = usuarioActual?.rol === 'admin';
 
   const cargarBitacora = useCallback(async () => {
@@ -100,6 +110,43 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
       setFechaMostrada(fechaAgenda);
       setModalFecha(false);
       setFechaAgenda('');
+      cargarBitacora();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const abrirReagendar = () => {
+    setReagFecha(''); setReagFactor(''); setReagMotivo(''); setReagNota('');
+    setModalReag(true);
+  };
+
+  const handleReagendar = async () => {
+    if (!reagFecha || !reagFactor || !reagMotivo) return;
+    setGuardando(true);
+    try {
+      const esExterno = reagFactor === 'externo';
+      const enCurso = proyecto.estatus === 'en_progreso';
+      const motivoLabel = FACTORES[reagFactor]?.motivos.find(m => m[0] === reagMotivo)?.[1] || reagMotivo;
+      await actualizarProyecto(proyecto.id, {
+        fecha_agenda: reagFecha,
+        fecha_original: proyecto.fecha_original || fechaMostrada || proyecto.fecha_agenda,
+        motivo_reagendo: reagNota || null,
+        reagenda_factor: reagFactor,
+        reagenda_motivo: reagMotivo,
+        estatus: 'reagendado',
+        dias_en_etapa: esExterno ? 0 : (proyecto.dias_en_etapa ?? 0),
+      });
+      await agregarBitacora({
+        proyecto_id: proyecto.id,
+        tipo: 'reagenda',
+        descripcion: `Reagendado → ${reagFecha}. Factor ${reagFactor} · ${motivoLabel}${enCurso ? ' · movimiento de último minuto' : ''}${reagNota ? '. ' + reagNota : ''}. SLA: ${esExterno ? 'reinicia (no penaliza a KENET)' : 'conserva (cuenta contra KENET)'}.`,
+        usuario_id: usuarioActual?.id ?? null,
+      });
+      setFechaMostrada(reagFecha);
+      setModalReag(false);
       cargarBitacora();
     } catch (e) {
       alert('Error: ' + e.message);
@@ -245,7 +292,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
                   </button>
                 )}
                 <button className="btn btn-outline w-full" onClick={() => setModalNota(true)}>📝 Agregar nota</button>
-                <button className="btn btn-outline w-full" onClick={() => setVista('reagendados')}>🔄 Reagendar</button>
+                <button className="btn btn-outline w-full" onClick={abrirReagendar}>🔄 Reagendar</button>
                 <hr className="divider" />
                 <button className="btn btn-red w-full btn-sm" style={{ justifyContent: 'center' }}
                   onClick={async () => {
@@ -260,6 +307,58 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={modalReag}
+        onClose={() => setModalReag(false)}
+        title="Reagendar instalación"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setModalReag(false)}>Cancelar</button>
+            <button className="btn btn-ambar" onClick={handleReagendar} disabled={!reagFecha || !reagFactor || !reagMotivo || guardando}>
+              {guardando ? 'Guardando…' : 'Confirmar reagenda'}
+            </button>
+          </>
+        }
+      >
+        {proyecto.estatus === 'en_progreso' && (
+          <div style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>
+            ⚠️ Instalación en curso — se registra como <strong>movimiento de último minuto</strong>.
+          </div>
+        )}
+        <div className="form-group">
+          <label>Nueva fecha de instalación</label>
+          <input type="date" value={reagFecha} onChange={e => setReagFecha(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label>Factor</label>
+            <select value={reagFactor} onChange={e => { setReagFactor(e.target.value); setReagMotivo(''); }}>
+              <option value="">Selecciona…</option>
+              <option value="interno">Interno (KENET)</option>
+              <option value="externo">Externo</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Motivo</label>
+            <select value={reagMotivo} onChange={e => setReagMotivo(e.target.value)} disabled={!reagFactor}>
+              <option value="">{reagFactor ? 'Selecciona…' : '— elige factor —'}</option>
+              {(FACTORES[reagFactor]?.motivos || []).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Nota (opcional)</label>
+          <textarea value={reagNota} onChange={e => setReagNota(e.target.value)} placeholder="Detalle del reagende…" rows={2} />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '8px 10px', background: '#F9FAFB', borderRadius: 6 }}>
+          {reagFactor === 'externo'
+            ? 'Factor externo → el SLA se reinicia (no penaliza a KENET).'
+            : reagFactor === 'interno'
+            ? 'Factor interno → el SLA conserva los días (cuenta contra KENET).'
+            : 'El factor define el SLA: externo no penaliza · interno sí.'}
+        </div>
+      </Modal>
 
       <Modal
         open={modalFecha}

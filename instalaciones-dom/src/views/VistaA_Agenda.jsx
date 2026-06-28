@@ -66,6 +66,9 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
     try {
       const payload = {
         ...nuevoProy,
+        folio_odoo:   nuevoProy.folio_odoo || null,
+        direccion:    nuevoProy.direccion || null,
+        fecha_agenda: nuevoProy.fecha_agenda || null,
         paneles: nuevoProy.paneles ? parseInt(nuevoProy.paneles) : null,
         kw:      nuevoProy.kw ? parseFloat(nuevoProy.kw) : null,
         cuadrilla_id: nuevoProy.cuadrilla_id || null,
@@ -76,7 +79,9 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
       await agregarBitacora({
         proyecto_id: proyecto.id,
         tipo: 'agenda',
-        descripcion: `Proyecto agendado para ${nuevoProy.fecha_agenda}`,
+        descripcion: nuevoProy.fecha_agenda
+          ? `Proyecto agendado para ${nuevoProy.fecha_agenda}`
+          : 'Proyecto creado sin fecha de agenda (por agendar)',
         usuario_id: usuarioActual?.id ?? null,
       });
       setModalAgendar(false);
@@ -225,8 +230,8 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Fecha de agenda</label>
-              <input type="date" value={nuevoProy.fecha_agenda} onChange={e => setNuevoProy(p => ({ ...p, fecha_agenda: e.target.value }))} required />
+              <label>Fecha de agenda <span className="text-gray text-xs">(opcional)</span></label>
+              <input type="date" value={nuevoProy.fecha_agenda} onChange={e => setNuevoProy(p => ({ ...p, fecha_agenda: e.target.value }))} />
             </div>
             <div className="form-group">
               <label>Paneles</label>

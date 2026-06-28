@@ -12,6 +12,7 @@ import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 
 export default function App() {
   const [vista, setVista] = useState('agenda');
+  const [navOpen, setNavOpen] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -102,8 +103,21 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar vista={vista} setVista={setVista} onLogout={handleLogout} usuario={session.user} />
-      <main className="main-content">{renderVista()}</main>
+      <Sidebar
+        vista={vista}
+        setVista={setVista}
+        onLogout={handleLogout}
+        usuario={session.user}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+      />
+      <main className="main-content">
+        <header className="mobile-topbar">
+          <button className="hamburger" onClick={() => setNavOpen(true)} aria-label="Abrir menú">☰</button>
+          <div className="mobile-topbar-title">☀️ KENET Solar</div>
+        </header>
+        {renderVista()}
+      </main>
     </div>
   );
 }

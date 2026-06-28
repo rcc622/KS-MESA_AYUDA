@@ -352,10 +352,59 @@ textarea { resize: vertical; min-height: 80px; }
 .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 13px; }
 
+/* ─── Móvil: barra superior + drawer (ocultos en escritorio) ─── */
+.mobile-topbar { display: none; }
+.sidebar-overlay { display: none; }
+
 @media (max-width: 768px) {
-  .sidebar { display: none; }
+  /* El sidebar se vuelve un drawer deslizable */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 270px;
+    box-shadow: var(--shadow-md);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.show {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 90;
+  }
   .main-content { margin-left: 0; }
+
+  /* Barra superior con hamburguesa */
+  .mobile-topbar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--azul-profundo); color: white;
+    padding: 8px 12px;
+    position: sticky; top: 0; z-index: 60;
+  }
+  .hamburger {
+    background: none; border: none; color: white;
+    font-size: 22px; line-height: 1; cursor: pointer;
+    width: 44px; height: 44px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hamburger:active { background: rgba(255,255,255,0.12); }
+  .mobile-topbar-title { font-size: 14px; font-weight: 700; color: var(--ambar); }
+
+  /* Touch targets más grandes en el menú */
+  .nav-item { padding: 13px 16px; font-size: 14px; }
+
+  /* Header apilado (no sticky para no chocar con la barra superior) */
+  .page-header { position: static; flex-wrap: wrap; padding: 12px 14px; }
+  .page-header > .btn, .page-header .btn-ambar, .page-header .btn-primary { width: 100%; justify-content: center; }
+
+  /* Filtros y formularios en una columna */
+  .filters-bar { flex-wrap: wrap; }
+  .filters-bar select,
+  .filters-bar input[type="text"] { width: 100%; min-width: 0; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
+
+  /* Modal casi a pantalla completa */
+  .modal-box { width: 94vw; max-width: 94vw; }
+
   .page-body { padding: 14px; }
   .source-grid { grid-template-columns: 1fr 1fr; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }

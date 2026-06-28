@@ -103,6 +103,15 @@ export async function getUsuarios({ rol, zona } = {}) {
   return data;
 }
 
+// Mapea el usuario logueado (Supabase Auth) a su fila en la tabla `usuarios`
+// por email. Devuelve null si no existe (la bitácora acepta usuario_id null).
+export async function getUsuarioPorEmail(email) {
+  if (!email) return null;
+  const { data, error } = await supabase.from('usuarios').select('*').eq('email', email).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // ── CORTES DE PAGO ───────────────────────────────────────────
 export async function getCortes({ semana_inicio } = {}) {
   let q = supabase

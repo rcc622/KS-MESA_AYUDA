@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './lib/supabase';
+import { getUsuarioPorEmail } from './lib/api';
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import VistaA_Agenda from './views/VistaA_Agenda';
@@ -16,6 +17,7 @@ export default function App() {
   const [navOpen, setNavOpen] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [session, setSession] = useState(null);
+  const [usuarioActual, setUsuarioActual] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +43,17 @@ export default function App() {
   };
 
   const handleLogout = () => supabase.auth.signOut();
+
+  // Mapea el usuario de Auth a su fila en `usuarios` (por email) para que la
+  // bitácora guarde un usuario_id válido (o null si no está en la tabla).
+  useEffect(() => {
+    if (!session?.user?.email) { setUsuarioActual(null); return; }
+    let cancelado = false;
+    getUsuarioPorEmail(session.user.email)
+      .then(u => { if (!cancelado) setUsuarioActual({ id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null }); })
+      .catch(() => { if (!cancelado) setUsuarioActual({ id: null, email: session.user.email }); });
+    return () => { cancelado = true; };
+  }, [session]);
 
   // Bloquea el scroll del fondo mientras el drawer móvil está abierto
   useEffect(() => {
@@ -90,8 +103,6 @@ export default function App() {
       </div>
     );
   }
-
-  const usuarioActual = { id: session.user.id, email: session.user.email };
 
   const props = { setVista, setProyectoSeleccionado, usuarioActual };
 

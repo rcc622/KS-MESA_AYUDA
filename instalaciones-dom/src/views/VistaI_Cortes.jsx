@@ -22,14 +22,17 @@ export default function VistaI_Cortes() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    getSemanas().then(data => {
-      setSemanas(data);
-      if (data.length > 0) setSemanaActiva(data[0].semana_inicio);
-    });
+    getSemanas()
+      .then(data => {
+        setSemanas(data);
+        if (data.length > 0) setSemanaActiva(data[0].semana_inicio);
+        else setLoading(false);
+      })
+      .catch(e => { console.error(e); setLoading(false); });
   }, []);
 
   const cargar = useCallback(async () => {
-    if (!semanaActiva) return;
+    if (!semanaActiva) { setLoading(false); return; }
     setLoading(true);
     try {
       const data = await getCortes({ semana_inicio: semanaActiva });

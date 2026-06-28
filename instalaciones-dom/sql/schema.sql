@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS cuadrillas (
   tipo            TEXT NOT NULL CHECK (tipo IN ('externa', 'interna')),
   zona            TEXT NOT NULL CHECK (zona IN ('MTY', 'SLT', 'TRC', 'MVA')),
   pm_id           UUID REFERENCES usuarios(id),
+  responsable_id  UUID REFERENCES usuarios(id),   -- jefe de cuadrilla (ve su trabajo en el modulo instalador)
   aplica_vueltas  BOOLEAN DEFAULT false,
   esquema_pago    TEXT CHECK (esquema_pago IN ('por_instalacion', 'por_panel', 'salario_bono', 'otro')),
   activa          BOOLEAN DEFAULT true,

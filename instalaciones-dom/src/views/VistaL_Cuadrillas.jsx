@@ -18,6 +18,7 @@ const KPIS = [
 export default function VistaL_Cuadrillas() {
   const [cuadrillas, setCuadrillas] = useState([]);
   const [pms, setPms] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandida, setExpandida] = useState(null);
   const [modalNueva, setModalNueva] = useState(false);
@@ -25,15 +26,20 @@ export default function VistaL_Cuadrillas() {
   const [modalRegla, setModalRegla] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const [formC, setFormC] = useState({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
+  const [formC, setFormC] = useState({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', responsable_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
   const [formR, setFormR] = useState({ kpi: 'instalaciones_a_tiempo', meta: '', consecuencia: 'descuento_pago', valor: '' });
 
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const [cdata, udata] = await Promise.all([getCuadrillas(), getUsuarios({ rol: 'pm_domestico' })]);
+      const [cdata, pdata, udata] = await Promise.all([
+        getCuadrillas(),
+        getUsuarios({ rol: 'pm_domestico' }),
+        getUsuarios(),
+      ]);
       setCuadrillas(cdata);
-      setPms(udata);
+      setPms(pdata);
+      setUsuarios(udata);
     } catch (e) {
       console.error(e);
     } finally {
@@ -43,13 +49,13 @@ export default function VistaL_Cuadrillas() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const resetForm = () => setFormC({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
+  const resetForm = () => setFormC({ nombre: '', tipo: 'externa', zona: 'MTY', pm_id: '', responsable_id: '', aplica_vueltas: false, esquema_pago: 'por_instalacion' });
 
   const abrirNueva = () => { setEditId(null); resetForm(); setModalNueva(true); };
 
   const abrirEditar = (c) => {
     setEditId(c.id);
-    setFormC({ nombre: c.nombre, tipo: c.tipo, zona: c.zona, pm_id: c.pm_id || '', aplica_vueltas: c.aplica_vueltas, esquema_pago: c.esquema_pago });
+    setFormC({ nombre: c.nombre, tipo: c.tipo, zona: c.zona, pm_id: c.pm_id || '', responsable_id: c.responsable_id || '', aplica_vueltas: c.aplica_vueltas, esquema_pago: c.esquema_pago });
     setModalNueva(true);
   };
 
@@ -59,7 +65,7 @@ export default function VistaL_Cuadrillas() {
     if (!formC.nombre) return;
     setGuardando(true);
     try {
-      const payload = { ...formC, pm_id: formC.pm_id || null };
+      const payload = { ...formC, pm_id: formC.pm_id || null, responsable_id: formC.responsable_id || null };
       if (editId) await actualizarCuadrilla(editId, payload);
       else        await crearCuadrilla(payload);
       cerrarModal();
@@ -111,6 +117,7 @@ export default function VistaL_Cuadrillas() {
 
         {cuadrillas.map(c => {
           const pm = pms.find(u => u.id === c.pm_id);
+          const responsable = usuarios.find(u => u.id === c.responsable_id);
           const reglas = c.reglas || [];
           const isExpandida = expandida === c.id;
 
@@ -144,6 +151,7 @@ export default function VistaL_Cuadrillas() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>PM responsable</span><strong>{pm?.nombre || '—'}</strong></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>Responsable (jefe)</span><strong>{responsable?.nombre || '—'}</strong></div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span>Esquema de pago</span><strong>{ESQUEMAS.find(e => e.value === c.esquema_pago)?.label}</strong></div>
                         <hr className="divider" />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
@@ -256,6 +264,14 @@ export default function VistaL_Cuadrillas() {
               {ESQUEMAS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
             </select>
           </div>
+        </div>
+        <div className="form-group">
+          <label>Responsable (jefe de cuadrilla)</label>
+          <select value={formC.responsable_id} onChange={e => setFormC(f => ({ ...f, responsable_id: e.target.value }))}>
+            <option value="">Sin asignar</option>
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.nombre} · {u.rol}</option>)}
+          </select>
+          <div className="text-xs text-gray" style={{ marginTop: 4 }}>Verá los proyectos de esta cuadrilla en el módulo Reporte Instalador.</div>
         </div>
         {formC.tipo === 'externa' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--borde)' }}>

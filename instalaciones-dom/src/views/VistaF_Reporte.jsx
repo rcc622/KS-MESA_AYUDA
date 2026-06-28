@@ -28,14 +28,21 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const [etapaActiva, setEtapaActiva] = useState('checklist');
 
   useEffect(() => {
+    if (usuarioActual === null) return;   // espera a resolver quién es el usuario
+    setLoading(true);
     getProyectos()
       .then(data => {
-        const activos = data.filter(p => ['agendado', 'en_progreso'].includes(p.estatus));
+        const esAdmin = usuarioActual?.rol === 'admin';
+        const uid = usuarioActual?.id ?? null;
+        const activos = data.filter(p =>
+          ['agendado', 'en_progreso'].includes(p.estatus) &&
+          (esAdmin || (uid != null && p.cuadrilla?.responsable_id === uid))
+        );
         setProyectos(activos);
-        if (activos.length > 0) setProyectoId(activos[0].id);
+        setProyectoId(activos.length > 0 ? activos[0].id : '');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [usuarioActual]);
 
   const proyecto = proyectos.find(p => p.id === proyectoId);
   const checksPasados = CHECKLIST.filter((_, i) => checks[i]).length;

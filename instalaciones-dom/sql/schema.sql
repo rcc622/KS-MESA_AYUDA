@@ -64,8 +64,12 @@ CREATE TABLE IF NOT EXISTS proyectos (
   fecha_original    DATE,          -- fecha antes del último reagendo
   motivo_reagendo   TEXT,
   dias_en_etapa     INTEGER DEFAULT 0,
-  paneles           INTEGER,
-  kw                NUMERIC(6,2),
+  paneles               INTEGER,
+  kw                    NUMERIC(6,2),   -- tamaño del sistema (kWp)
+  panel_potencia_w      INTEGER,        -- potencia por panel (W)
+  panel_marca           TEXT,
+  inversor_capacidad_kw NUMERIC(6,2),
+  inversor_marca        TEXT,
   anticipo_pagado   BOOLEAN DEFAULT false,
   instalado_cobrado BOOLEAN DEFAULT false,
   medidor_pagado    BOOLEAN DEFAULT false,

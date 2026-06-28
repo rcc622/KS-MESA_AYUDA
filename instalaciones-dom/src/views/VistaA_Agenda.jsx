@@ -18,10 +18,12 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   const [modalAgendar, setModalAgendar] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  const [nuevoProy, setNuevoProy] = useState({
+  const PROY_VACIO = {
     folio: '', folio_odoo: '', cliente: '', direccion: '',
     zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', kw: '', notas: '',
-  });
+    panel_potencia_w: '', panel_marca: '', inversor_capacidad_kw: '', inversor_marca: '',
+  };
+  const [nuevoProy, setNuevoProy] = useState(PROY_VACIO);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -71,6 +73,10 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         fecha_agenda: nuevoProy.fecha_agenda || null,
         paneles: nuevoProy.paneles ? parseInt(nuevoProy.paneles) : null,
         kw:      nuevoProy.kw ? parseFloat(nuevoProy.kw) : null,
+        panel_potencia_w:      nuevoProy.panel_potencia_w ? parseInt(nuevoProy.panel_potencia_w) : null,
+        panel_marca:           nuevoProy.panel_marca || null,
+        inversor_capacidad_kw: nuevoProy.inversor_capacidad_kw ? parseFloat(nuevoProy.inversor_capacidad_kw) : null,
+        inversor_marca:        nuevoProy.inversor_marca || null,
         cuadrilla_id: nuevoProy.cuadrilla_id || null,
         estatus: 'agendado',
         dias_en_etapa: 0,
@@ -85,7 +91,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         usuario_id: usuarioActual?.id ?? null,
       });
       setModalAgendar(false);
-      setNuevoProy({ folio: '', folio_odoo: '', cliente: '', direccion: '', zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', kw: '', notas: '' });
+      setNuevoProy(PROY_VACIO);
       cargar();
     } catch (e) {
       alert('Error al guardar: ' + e.message);
@@ -240,8 +246,28 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>kW</label>
-              <input type="number" step="0.1" placeholder="5.4" value={nuevoProy.kw} onChange={e => setNuevoProy(p => ({ ...p, kw: e.target.value }))} />
+              <label>Potencia por panel (W)</label>
+              <input type="number" placeholder="585" value={nuevoProy.panel_potencia_w} onChange={e => setNuevoProy(p => ({ ...p, panel_potencia_w: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Marca de panel</label>
+              <input type="text" placeholder="Ej: Trina, JA Solar" value={nuevoProy.panel_marca} onChange={e => setNuevoProy(p => ({ ...p, panel_marca: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Capacidad de inversor (kW)</label>
+              <input type="number" step="0.1" placeholder="5.0" value={nuevoProy.inversor_capacidad_kw} onChange={e => setNuevoProy(p => ({ ...p, inversor_capacidad_kw: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Marca de inversor</label>
+              <input type="text" placeholder="Ej: Growatt, Huawei" value={nuevoProy.inversor_marca} onChange={e => setNuevoProy(p => ({ ...p, inversor_marca: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Tamaño del sistema (kWp)</label>
+              <input type="number" step="0.1" placeholder="7.02" value={nuevoProy.kw} onChange={e => setNuevoProy(p => ({ ...p, kw: e.target.value }))} />
             </div>
           </div>
           <div className="form-group">

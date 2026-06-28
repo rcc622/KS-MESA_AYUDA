@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getProyectos, actualizarProyecto, agregarBitacora } from '../lib/api';
+import EstatusBadge from '../components/EstatusBadge';
+import SLABadge from '../components/SLABadge';
 
 const CHECKLIST = [
   'Revisión de estructura de techo',
@@ -14,10 +16,27 @@ const CHECKLIST = [
   'Limpieza del área de trabajo',
 ];
 
+// Resumen legible del equipo a instalar
+function equipoChips(p) {
+  const chips = [];
+  if (p.paneles) {
+    const det = [p.panel_potencia_w ? `${p.panel_potencia_w} W` : null, p.panel_marca].filter(Boolean).join(' · ');
+    chips.push(`☀️ ${p.paneles} paneles${det ? ` (${det})` : ''}`);
+  }
+  if (p.kw) chips.push(`⚡ ${p.kw} kWp`);
+  if (p.inversor_tipo || p.inversor_capacidad_kw || p.inversor_marca) {
+    const tipo = p.inversor_tipo === 'microinversor' ? 'Microinversor' : 'Inversor';
+    const cant = p.inversor_cantidad ? `${p.inversor_cantidad}× ` : '';
+    const det = [p.inversor_capacidad_kw ? `${p.inversor_capacidad_kw} kW` : null, p.inversor_marca].filter(Boolean).join(' · ');
+    chips.push(`🔌 ${cant}${tipo}${det ? ` (${det})` : ''}`);
+  }
+  return chips;
+}
+
 export default function VistaF_Reporte({ usuarioActual }) {
   const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [proyectoId, setProyectoId] = useState('');
+  const [proyectoId, setProyectoId] = useState('');   // '' = vista de lista
   const [checks, setChecks] = useState({});
   const [fotos, setFotos] = useState({ antes: [], durante: [], despues: [] });
   const [observaciones, setObservaciones] = useState('');
@@ -27,28 +46,43 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const [enviado, setEnviado] = useState(false);
   const [etapaActiva, setEtapaActiva] = useState('checklist');
 
-  useEffect(() => {
-    if (usuarioActual === null) return;   // espera a resolver quién es el usuario
+  const esInstalador = usuarioActual?.rol === 'instalador';
+  const titulo = esInstalador ? 'Mis instalaciones' : 'Reporte Instalador';
+
+  const cargar = useCallback(async () => {
+    if (usuarioActual == null) return;
     setLoading(true);
-    getProyectos()
-      .then(data => {
-        const esAdmin = usuarioActual?.rol === 'admin';
-        const uid = usuarioActual?.id ?? null;
-        const activos = data.filter(p =>
-          ['agendado', 'en_progreso'].includes(p.estatus) &&
-          (esAdmin || (uid != null && p.cuadrilla?.responsable_id === uid))
-        );
-        setProyectos(activos);
-        setProyectoId(activos.length > 0 ? activos[0].id : '');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const data = await getProyectos();
+      const esAdmin = usuarioActual?.rol === 'admin';
+      const uid = usuarioActual?.id ?? null;
+      const mios = data.filter(p =>
+        ['agendado', 'en_progreso', 'reagendado'].includes(p.estatus) &&
+        (esAdmin || (uid != null && p.cuadrilla?.responsable_id === uid))
+      );
+      setProyectos(mios);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   }, [usuarioActual]);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const proyecto = proyectos.find(p => p.id === proyectoId);
   const checksPasados = CHECKLIST.filter((_, i) => checks[i]).length;
   const pct = Math.round((checksPasados / CHECKLIST.length) * 100);
 
-  const simularFoto = (etapa) => setFotos(f => ({ ...f, [etapa]: [...f[etapa], Date.now()] }));
+  const simularFoto = (etapa) => setFotos(f => ({ ...f, [etapa]: [...f[etapa], 'foto'] }));
+
+  const reiniciar = () => {
+    setEnviado(false); setChecks({}); setFotos({ antes: [], durante: [], despues: [] });
+    setFirmado(false); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
+  };
+
+  const abrirReporte = (p) => { reiniciar(); setProyectoId(p.id); };
+  const volverALista = () => { reiniciar(); setProyectoId(''); cargar(); };
 
   const handleEnviar = async () => {
     if (!firmado || !nombreFirma.trim()) { alert('Obtén la firma del cliente antes de enviar.'); return; }
@@ -72,24 +106,20 @@ export default function VistaF_Reporte({ usuarioActual }) {
     }
   };
 
-  const reiniciar = () => {
-    setEnviado(false); setChecks({}); setFotos({ antes: [], durante: [], despues: [] });
-    setFirmado(false); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
-  };
-
   if (loading) return <div className="page-body"><div className="empty-state"><div className="es-icon">⏳</div><p>Cargando…</p></div></div>;
 
+  // ── Pantalla de éxito ──
   if (enviado) {
     return (
       <>
-        <div className="page-header"><h2>📱 Reporte Instalador</h2></div>
+        <div className="page-header"><h2>{titulo}</h2></div>
         <div className="page-body">
           <div className="reporte-wrap">
             <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ fontSize: 60, marginBottom: 16 }}>✅</div>
               <div className="fw-700" style={{ fontSize: 17, marginBottom: 8 }}>Reporte enviado</div>
               <div className="text-gray text-sm mb-16">Instalación registrada. El PM recibirá notificación.</div>
-              <button className="btn btn-primary" onClick={reiniciar}>Nuevo reporte</button>
+              <button className="btn btn-primary" onClick={volverALista}>← Volver a mis instalaciones</button>
             </div>
           </div>
         </div>
@@ -97,19 +127,72 @@ export default function VistaF_Reporte({ usuarioActual }) {
     );
   }
 
-  if (proyectos.length === 0) {
+  // ── Vista de LISTA (no hay proyecto abierto) ──
+  if (!proyecto) {
     return (
       <>
-        <div className="page-header"><h2>📱 Reporte Instalador</h2></div>
-        <div className="page-body"><div className="empty-state"><div className="es-icon">📋</div><p>No hay proyectos agendados o en progreso.</p></div></div>
+        <div className="page-header">
+          <div><h2>{titulo}</h2><div className="sub">{proyectos.length} {proyectos.length === 1 ? 'instalación' : 'instalaciones'} por atender</div></div>
+          <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
+        </div>
+        <div className="page-body">
+          <div className="reporte-wrap">
+            {proyectos.length === 0 ? (
+              <div className="empty-state">
+                <div className="es-icon">📋</div>
+                <p>No tienes instalaciones asignadas.</p>
+                <div className="text-xs text-gray mt-8">Aparecerán aquí cuando la mesa te despache un proyecto.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {proyectos.map(p => (
+                  <div key={p.id} className="card" style={{ cursor: 'pointer' }} onClick={() => abrirReporte(p)}>
+                    <div className="card-body">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                        <div>
+                          <div className="fw-700 text-blue" style={{ fontSize: 13 }}>{p.folio}</div>
+                          <div className="fw-600" style={{ fontSize: 14 }}>{p.cliente}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                          <SLABadge dias={p.dias_en_etapa} />
+                          <EstatusBadge estatus={p.estatus} />
+                        </div>
+                      </div>
+                      {p.direccion && <div className="text-sm text-gray" style={{ marginBottom: 8 }}>📍 {p.direccion}</div>}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                        <span className="badge badge-zona">{p.zona}</span>
+                        <span className="badge" style={{ background: '#EAF2F9', color: 'var(--azul-primario)' }}>📅 {p.fecha_agenda || 'Sin fecha'}</span>
+                      </div>
+                      {equipoChips(p).length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', background: '#F9FAFB', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+                          {equipoChips(p).map((c, i) => <span key={i}>{c}</span>)}
+                        </div>
+                      )}
+                      <button className="btn btn-ambar w-full" style={{ justifyContent: 'center' }} onClick={(e) => { e.stopPropagation(); abrirReporte(p); }}>
+                        Iniciar reporte →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </>
     );
   }
 
+  // ── Vista de REPORTE (proyecto abierto) ──
   return (
     <>
       <div className="page-header">
-        <div><h2>📱 Reporte Instalador</h2><div className="sub">Captura de campo · {proyecto?.cliente}</div></div>
+        <div>
+          <button onClick={volverALista} style={{ fontSize: 12, color: 'var(--gris-secundario)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 2 }}>
+            ← Mis instalaciones
+          </button>
+          <h2>{titulo}</h2>
+          <div className="sub">{proyecto?.cliente}</div>
+        </div>
         <div style={{ fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 12, background: pct === 100 ? '#D1FAE5' : '#EAF2F9', color: pct === 100 ? 'var(--verde)' : 'var(--azul-primario)' }}>
           {pct}% completado
         </div>
@@ -117,24 +200,16 @@ export default function VistaF_Reporte({ usuarioActual }) {
 
       <div className="page-body">
         <div className="reporte-wrap">
-          <div className="card mb-16">
-            <div className="card-body">
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Proyecto a reportar</label>
-                <select value={proyectoId} onChange={e => { setProyectoId(e.target.value); reiniciar(); }}>
-                  {proyectos.map(p => <option key={p.id} value={p.id}>{p.folio} — {p.cliente}</option>)}
-                </select>
+          <div style={{ background: 'var(--azul-claro)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+            <div className="fw-700 text-blue">{proyecto.folio} · {proyecto.cliente}</div>
+            {proyecto.direccion && <div>📍 {proyecto.direccion}</div>}
+            <div className="text-gray" style={{ marginTop: 2 }}>📅 {proyecto.fecha_agenda || 'Sin fecha'} · {proyecto.zona}</div>
+            {equipoChips(proyecto).length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {equipoChips(proyecto).map((c, i) => <span key={i} style={{ fontSize: 12 }}>{c}</span>)}
               </div>
-            </div>
+            )}
           </div>
-
-          {proyecto && (
-            <div style={{ background: 'var(--azul-claro)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
-              <div className="fw-700 text-blue">{proyecto.folio}</div>
-              <div>{proyecto.direccion}</div>
-              <div className="text-gray">{proyecto.paneles} paneles · {proyecto.kw} kW</div>
-            </div>
-          )}
 
           <div className="tabs">
             {[
@@ -205,7 +280,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
                     <div><span className="text-gray">Checklist:</span> <strong style={{ color: pct === 100 ? 'var(--verde)' : 'var(--ambar)' }}>{pct}%</strong></div>
                     <div><span className="text-gray">Fotos:</span> <strong>{fotos.antes.length + fotos.durante.length + fotos.despues.length}</strong></div>
                     <div><span className="text-gray">Paneles:</span> <strong>{proyecto?.paneles ?? '—'}</strong></div>
-                    <div><span className="text-gray">kW:</span> <strong>{proyecto?.kw ?? '—'}</strong></div>
+                    <div><span className="text-gray">kWp:</span> <strong>{proyecto?.kw ?? '—'}</strong></div>
                   </div>
                 </div>
                 <div className="form-group">

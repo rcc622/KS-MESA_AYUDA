@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getBitacora, agregarBitacora, actualizarProyecto, mensajeError } from '../lib/api';
+import { getBitacora, getProyecto, getCuadrillas, agregarBitacora, actualizarProyecto, mensajeError } from '../lib/api';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import Modal from '../components/Modal';
@@ -18,7 +18,9 @@ const TIPOS_BITACORA = {
   import:   { label: 'Import',      icon: '📤', color: '#0891B2' },
 };
 
-export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
+const WATTS_POR_PANEL = 600;
+
+export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccionado, usuarioActual }) {
   const [bitacora, setBitacora] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalNota, setModalNota] = useState(false);
@@ -33,6 +35,9 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
   const [reagFactor, setReagFactor] = useState('');
   const [reagMotivo, setReagMotivo] = useState('');
   const [reagNota, setReagNota] = useState('');
+  const [cuadrillas, setCuadrillas] = useState([]);
+  const [modalEditar, setModalEditar] = useState(false);
+  const [formEdit, setFormEdit] = useState(null);
   const esAdmin = usuarioActual?.rol === 'admin';
 
   const cargarBitacora = useCallback(async () => {
@@ -50,6 +55,11 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
   }, [proyecto]);
 
   useEffect(() => { cargarBitacora(); }, [cargarBitacora]);
+  useEffect(() => { getCuadrillas({ activa: true }).then(setCuadrillas).catch(() => {}); }, []);
+
+  const refrescar = async () => {
+    try { const fresh = await getProyecto(proyecto.id); setProyectoSeleccionado?.(fresh); } catch (e) { console.error(e); }
+  };
 
   if (!proyecto) {
     return (
@@ -111,6 +121,53 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
       setModalFecha(false);
       setFechaAgenda('');
       cargarBitacora();
+      refrescar();
+    } catch (e) {
+      alert(mensajeError(e));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const abrirEditar = () => {
+    const p = proyecto;
+    setFormEdit({
+      cliente: p.cliente || '', telefono: p.telefono || '', direccion: p.direccion || '',
+      zona: p.zona || 'MTY', folio_odoo: p.folio_odoo || '', cuadrilla_id: p.cuadrilla_id || '',
+      paneles: p.paneles ?? '', panel_potencia_w: p.panel_potencia_w ?? '', panel_marca: p.panel_marca || '',
+      inversor_tipo: p.inversor_tipo || '', inversor_cantidad: p.inversor_cantidad ?? '',
+      inversor_capacidad_kw: p.inversor_capacidad_kw ?? '', inversor_marca: p.inversor_marca || '',
+      notas: p.notas || '',
+    });
+    setModalEditar(true);
+  };
+
+  const handleEditar = async () => {
+    if (!formEdit?.cliente?.trim()) return;
+    setGuardando(true);
+    try {
+      const paneles = formEdit.paneles ? parseInt(formEdit.paneles) : null;
+      await actualizarProyecto(proyecto.id, {
+        cliente: formEdit.cliente,
+        telefono: formEdit.telefono || null,
+        direccion: formEdit.direccion || null,
+        zona: formEdit.zona,
+        folio_odoo: formEdit.folio_odoo || null,
+        cuadrilla_id: formEdit.cuadrilla_id || null,
+        paneles,
+        kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,
+        panel_potencia_w: formEdit.panel_potencia_w ? parseInt(formEdit.panel_potencia_w) : null,
+        panel_marca: formEdit.panel_marca || null,
+        inversor_tipo: formEdit.inversor_tipo || null,
+        inversor_cantidad: formEdit.inversor_cantidad ? parseInt(formEdit.inversor_cantidad) : null,
+        inversor_capacidad_kw: formEdit.inversor_capacidad_kw ? parseFloat(formEdit.inversor_capacidad_kw) : null,
+        inversor_marca: formEdit.inversor_marca || null,
+        notas: formEdit.notas || null,
+      });
+      await agregarBitacora({ proyecto_id: proyecto.id, tipo: 'nota', descripcion: 'Proyecto editado por admin (datos / equipo).', usuario_id: usuarioActual?.id ?? null });
+      await refrescar();
+      cargarBitacora();
+      setModalEditar(false);
     } catch (e) {
       alert(mensajeError(e));
     } finally {
@@ -148,6 +205,7 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
       setFechaMostrada(reagFecha);
       setModalReag(false);
       cargarBitacora();
+      refrescar();
     } catch (e) {
       alert(mensajeError(e));
     } finally {
@@ -287,6 +345,9 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
               <div className="card-header"><h3>Acciones rápidas</h3></div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {esAdmin && (
+                  <button className="btn btn-primary w-full" onClick={abrirEditar}>✏️ Editar proyecto</button>
+                )}
+                {esAdmin && (
                   <button className="btn btn-ambar w-full" onClick={() => { setFechaAgenda(fechaMostrada || ''); setModalFecha(true); }}>
                     📅 {fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha'}
                   </button>
@@ -307,6 +368,69 @@ export default function VistaC_Detalle({ proyecto, setVista, usuarioActual }) {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={modalEditar}
+        onClose={() => setModalEditar(false)}
+        title="Editar proyecto"
+        footer={
+          <>
+            <button className="btn btn-outline" onClick={() => setModalEditar(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleEditar} disabled={!formEdit?.cliente?.trim() || guardando}>
+              {guardando ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </>
+        }
+      >
+        {formEdit && (
+          <>
+            <div className="form-row">
+              <div className="form-group"><label>Cliente</label><input value={formEdit.cliente} onChange={e => setFormEdit(f => ({ ...f, cliente: e.target.value }))} /></div>
+              <div className="form-group"><label>Teléfono</label><input value={formEdit.telefono} onChange={e => setFormEdit(f => ({ ...f, telefono: e.target.value }))} /></div>
+            </div>
+            <div className="form-group"><label>Dirección</label><input value={formEdit.direccion} onChange={e => setFormEdit(f => ({ ...f, direccion: e.target.value }))} /></div>
+            <div className="form-row">
+              <div className="form-group"><label>Zona</label>
+                <select value={formEdit.zona} onChange={e => setFormEdit(f => ({ ...f, zona: e.target.value }))}>
+                  {['MTY', 'SLT', 'TRC', 'MVA'].map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              </div>
+              <div className="form-group"><label>OV Odoo</label><input value={formEdit.folio_odoo} onChange={e => setFormEdit(f => ({ ...f, folio_odoo: e.target.value }))} /></div>
+            </div>
+            <div className="form-group"><label>Cuadrilla</label>
+              <select value={formEdit.cuadrilla_id} onChange={e => setFormEdit(f => ({ ...f, cuadrilla_id: e.target.value }))}>
+                <option value="">Sin asignar</option>
+                {cuadrillas.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.zona})</option>)}
+              </select>
+            </div>
+
+            <div className="form-section-label">Equipo</div>
+            <div className="form-row">
+              <div className="form-group"><label>Paneles</label><input type="number" value={formEdit.paneles} onChange={e => setFormEdit(f => ({ ...f, paneles: e.target.value }))} /></div>
+              <div className="form-group"><label>Potencia por panel (W)</label><input type="number" value={formEdit.panel_potencia_w} onChange={e => setFormEdit(f => ({ ...f, panel_potencia_w: e.target.value }))} /></div>
+            </div>
+            <div className="form-group"><label>Marca de panel</label><input value={formEdit.panel_marca} onChange={e => setFormEdit(f => ({ ...f, panel_marca: e.target.value }))} /></div>
+            <div className="form-row">
+              <div className="form-group"><label>Tipo de inversor</label>
+                <select value={formEdit.inversor_tipo} onChange={e => setFormEdit(f => ({ ...f, inversor_tipo: e.target.value }))}>
+                  <option value="">Selecciona…</option>
+                  <option value="inversor">Inversor</option>
+                  <option value="microinversor">Microinversor</option>
+                </select>
+              </div>
+              <div className="form-group"><label>Cantidad de inversores</label><input type="number" value={formEdit.inversor_cantidad} onChange={e => setFormEdit(f => ({ ...f, inversor_cantidad: e.target.value }))} /></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label>Capacidad del inversor (kW)</label><input type="number" step="0.1" value={formEdit.inversor_capacidad_kw} onChange={e => setFormEdit(f => ({ ...f, inversor_capacidad_kw: e.target.value }))} /></div>
+              <div className="form-group"><label>Marca de inversor</label><input value={formEdit.inversor_marca} onChange={e => setFormEdit(f => ({ ...f, inversor_marca: e.target.value }))} /></div>
+            </div>
+            <div className="form-group"><label>Notas</label><textarea value={formEdit.notas} onChange={e => setFormEdit(f => ({ ...f, notas: e.target.value }))} rows={2} /></div>
+            <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '6px 10px', background: '#F9FAFB', borderRadius: 6 }}>
+              El folio KENET no se edita (es la llave del proyecto). El tamaño (kWp) se recalcula solo.
+            </div>
+          </>
+        )}
+      </Modal>
 
       <Modal
         open={modalReag}

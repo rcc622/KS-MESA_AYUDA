@@ -81,7 +81,17 @@ export default function VistaF_Reporte({ usuarioActual }) {
     setFirmado(false); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
   };
 
-  const abrirReporte = (p) => { reiniciar(); setProyectoId(p.id); };
+  const abrirReporte = async (p) => {
+    reiniciar();
+    setProyectoId(p.id);
+    if (p.estatus === 'agendado') {   // al iniciar, la instalación queda en progreso
+      try {
+        await actualizarProyecto(p.id, { estatus: 'en_progreso' });
+        await agregarBitacora({ proyecto_id: p.id, tipo: 'inicio', descripcion: 'Instalación iniciada por el instalador.', usuario_id: usuarioActual?.id ?? null });
+        setProyectos(prev => prev.map(x => x.id === p.id ? { ...x, estatus: 'en_progreso' } : x));
+      } catch (e) { console.error(e); }
+    }
+  };
   const volverALista = () => { reiniciar(); setProyectoId(''); cargar(); };
 
   const handleEnviar = async () => {
@@ -174,7 +184,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
                       )}
                       {puedeIniciar ? (
                         <button className="btn btn-ambar w-full" style={{ justifyContent: 'center' }} onClick={(e) => { e.stopPropagation(); abrirReporte(p); }}>
-                          Iniciar reporte →
+                          {p.estatus === 'en_progreso' ? 'Continuar instalación →' : 'Iniciar instalación →'}
                         </button>
                       ) : (
                         <button className="btn btn-outline w-full" disabled style={{ justifyContent: 'center', opacity: 0.65 }}>

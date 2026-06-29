@@ -3,6 +3,18 @@
 -- Schema v1 — pegar en Supabase SQL Editor y ejecutar
 -- ============================================================
 
+-- ── 0. LIMPIEZA (en caso de ejecución previa parcial) ────────
+DROP TABLE IF EXISTS corte_kpis       CASCADE;
+DROP TABLE IF EXISTS vueltas          CASCADE;
+DROP TABLE IF EXISTS cortes_pago      CASCADE;
+DROP TABLE IF EXISTS bitacora         CASCADE;
+DROP TABLE IF EXISTS proyectos        CASCADE;
+DROP TABLE IF EXISTS reglas_cuadrilla CASCADE;
+DROP TABLE IF EXISTS cuadrilla_miembros CASCADE;
+DROP TABLE IF EXISTS cuadrillas       CASCADE;
+DROP TABLE IF EXISTS usuarios         CASCADE;
+DROP FUNCTION IF EXISTS set_updated_at() CASCADE;
+
 -- ── 1. USUARIOS ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS usuarios (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

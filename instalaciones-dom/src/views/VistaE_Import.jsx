@@ -1,57 +1,130 @@
 import { useState, useRef } from 'react';
 import { upsertProyectos, agregarBitacora, mensajeError } from '../lib/api';
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_FILAS     = 500;
+const ZONAS_VALIDAS = ['MTY', 'SLT', 'TRC', 'MVA'];
+
+// Parseo CSV robusto: maneja campos entre comillas con comas adentro
+const parsearCSV = (texto) => {
+  const parsearLinea = (linea) => {
+    const campos = [];
+    let actual = '';
+    let dentroComillas = false;
+    for (let i = 0; i < linea.length; i++) {
+      const c = linea[i];
+      if (c === '"') {
+        if (dentroComillas && linea[i + 1] === '"') { actual += '"'; i++; }
+        else dentroComillas = !dentroComillas;
+      } else if (c === ',' && !dentroComillas) {
+        campos.push(actual.trim());
+        actual = '';
+      } else {
+        actual += c;
+      }
+    }
+    campos.push(actual.trim());
+    return campos;
+  };
+
+  const lineas = texto.trim().split(/\r?\n/);
+  const cabeceras = parsearLinea(lineas[0]).map(h => h.toLowerCase().trim());
+  return lineas.slice(1)
+    .filter(l => l.trim())
+    .map(linea => {
+      const vals = parsearLinea(linea);
+      return Object.fromEntries(cabeceras.map((h, i) => [h, vals[i] ?? '']));
+    });
+};
+
+// Elimina prefijos que disparan fórmulas en Excel/Sheets
+const sanitizar = (val) => {
+  if (typeof val !== 'string') return val;
+  return val.replace(/^[=+\-@\t\r]+/, '').slice(0, 500);
+};
+
+const validarFila = (r, idx) => {
+  const errores = [];
+
+  if (!r.folio_odoo?.trim())
+    errores.push('folio_odoo vacío');
+  else if (r.folio_odoo.length > 100)
+    errores.push('folio_odoo excede 100 caracteres');
+
+  if (!r.cliente?.trim())
+    errores.push('cliente vacío');
+  else if (r.cliente.length > 255)
+    errores.push('cliente excede 255 caracteres');
+
+  if (r.zona && !ZONAS_VALIDAS.includes(r.zona.trim().toUpperCase()))
+    errores.push(`zona inválida (válidas: ${ZONAS_VALIDAS.join(', ')})`);
+
+  if (r.paneles) {
+    const n = parseInt(r.paneles);
+    if (isNaN(n) || n < 1 || n > 999)
+      errores.push('paneles debe ser un número entre 1 y 999');
+  }
+
+  if (r.kw) {
+    const n = parseFloat(r.kw);
+    if (isNaN(n) || n < 0.1 || n > 500)
+      errores.push('kw debe estar entre 0.1 y 500');
+  }
+
+  if (r.fecha_agenda && !/^\d{4}-\d{2}-\d{2}$/.test(r.fecha_agenda.trim()))
+    errores.push('fecha_agenda debe ser YYYY-MM-DD');
+
+  if (r.direccion && r.direccion.length > 500)
+    errores.push('direccion excede 500 caracteres');
+
+  if (r.notas && r.notas.length > 1000)
+    errores.push('notas excede 1000 caracteres');
+
+  return { fila: idx + 1, errores, valida: errores.length === 0 };
+};
+
 export default function VistaE_Import({ usuarioActual, setVista }) {
   const [fuente, setFuente] = useState('csv');
   const [archivo, setArchivo] = useState(null);
   const [etapa, setEtapa] = useState('seleccion');
   const [drag, setDrag] = useState(false);
   const [filas, setFilas] = useState([]);
+  const [validaciones, setValidaciones] = useState([]);
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const fileRef = useRef();
 
   const fuentes = [
     { id: 'csv',    icon: '📄', label: 'CSV',           sub: 'Archivo .csv',           activo: true },
-    { id: 'xlsx',   icon: '📊', label: 'Excel / XLSX',  sub: 'Archivo .xlsx / .xls',   activo: true },
+    { id: 'xlsx',   icon: '📊', label: 'Excel / XLSX',  sub: 'Archivo .xlsx / .xls',   activo: false },
     { id: 'sheets', icon: '🔗', label: 'Google Sheets', sub: 'Requiere OAuth',          activo: false },
     { id: 'odoo',   icon: '⚙️', label: 'Odoo API',      sub: 'Fase 3',                  activo: false },
   ];
 
-  // Parseo CSV simple (sin dependencia externa)
-  const parsearCSV = (texto) => {
-    const lineas = texto.trim().split('\n');
-    const cabeceras = lineas[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    return lineas.slice(1).map(linea => {
-      const vals = linea.split(',').map(v => v.trim().replace(/"/g, ''));
-      return Object.fromEntries(cabeceras.map((h, i) => [h, vals[i] ?? '']));
-    });
-  };
-
   const handleFile = (f) => {
     if (!f) return;
     const ext = f.name.split('.').pop().toLowerCase();
-    if (fuente === 'csv' && ext !== 'csv') { alert('Selecciona un archivo .csv'); return; }
-    if (fuente === 'xlsx' && !['xlsx', 'xls'].includes(ext)) { alert('Selecciona un archivo .xlsx o .xls'); return; }
+    if (ext !== 'csv') { alert('Selecciona un archivo .csv'); return; }
+    if (f.size > MAX_FILE_SIZE) { alert('El archivo supera el límite de 5 MB'); return; }
     setArchivo(f);
 
-    if (fuente === 'csv') {
-      const reader = new FileReader();
-      reader.onload = e => {
-        try {
-          const rows = parsearCSV(e.target.result);
-          setFilas(rows);
-          setEtapa('preview');
-        } catch {
-          alert('Error al parsear el CSV. Verifica el formato.');
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const rows = parsearCSV(e.target.result);
+        if (rows.length > MAX_FILAS) {
+          alert(`El archivo tiene ${rows.length} filas. El límite es ${MAX_FILAS} por importación.`);
+          return;
         }
-      };
-      reader.readAsText(f);
-    } else {
-      // XLSX: mostrar preview simulado (requeriría librería xlsx para parseo real)
-      setFilas([]);
-      setEtapa('preview');
-    }
+        const vals = rows.map((r, i) => validarFila(r, i));
+        setFilas(rows);
+        setValidaciones(vals);
+        setEtapa('preview');
+      } catch {
+        alert('Error al parsear el CSV. Verifica el formato.');
+      }
+    };
+    reader.readAsText(f, 'UTF-8');
   };
 
   const handleDrop = (e) => {
@@ -60,36 +133,40 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
     handleFile(e.dataTransfer.files[0]);
   };
 
+  const filasValidas = validaciones.filter(v => v.valida).length;
+  const filasConError = validaciones.filter(v => !v.valida).length;
+
   const handleImportar = async () => {
     setImportando(true);
     try {
-      const payload = filas.map(r => ({
-        folio:        r.folio || null,
-        folio_odoo:   r.folio_odoo || null,
-        cliente:      r.cliente || '',
-        zona:         r.zona   || null,
-        paneles:      r.paneles ? parseInt(r.paneles) : null,
-        kw:           r.kw     ? parseFloat(r.kw)    : null,
-        fecha_agenda: r.fecha_agenda || null,
-        direccion:    r.direccion || null,
-        notas:        r.notas || null,
-        estatus:      'agendado',
-        dias_en_etapa: 0,
-      })).filter(r => r.folio_odoo);
+      const payload = filas
+        .filter((_, i) => validaciones[i]?.valida)
+        .map(r => ({
+          folio:         r.folio        ? sanitizar(r.folio.trim())    : null,
+          folio_odoo:    sanitizar(r.folio_odoo.trim()),
+          cliente:       sanitizar(r.cliente.trim()),
+          zona:          r.zona         ? r.zona.trim().toUpperCase()  : null,
+          paneles:       r.paneles      ? parseInt(r.paneles)          : null,
+          kw:            r.kw           ? parseFloat(r.kw)             : null,
+          fecha_agenda:  r.fecha_agenda ? r.fecha_agenda.trim()        : null,
+          direccion:     r.direccion    ? sanitizar(r.direccion.trim()) : null,
+          notas:         r.notas        ? sanitizar(r.notas.trim())    : null,
+          estatus:       'agendado',
+          dias_en_etapa: 0,
+        }));
 
       const data = await upsertProyectos(payload);
 
-      // bitácora por cada proyecto importado
       for (const p of data) {
         await agregarBitacora({
           proyecto_id: p.id,
           tipo: 'import',
-          descripcion: `Importado desde ${fuente.toUpperCase()} — ${archivo.name}`,
+          descripcion: `Importado desde CSV — ${archivo.name}`,
           usuario_id: usuarioActual?.id ?? null,
         });
       }
 
-      setResultado({ total: data.length, archivo: archivo.name });
+      setResultado({ total: data.length, errores: filasConError, archivo: archivo.name });
       setEtapa('resultado');
     } catch (e) {
       alert('Error al importar: ' + mensajeError(e));
@@ -98,7 +175,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
     }
   };
 
-  const reiniciar = () => { setArchivo(null); setFilas([]); setEtapa('seleccion'); setResultado(null); };
+  const reiniciar = () => { setArchivo(null); setFilas([]); setValidaciones([]); setEtapa('seleccion'); setResultado(null); };
 
   return (
     <>
@@ -156,44 +233,65 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
               <button className="btn btn-outline btn-sm" onClick={reiniciar}>← Cambiar archivo</button>
             </div>
             <div className="card-body">
-              {filas.length > 0 ? (
-                <>
-                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                    <div style={{ flex: 1, background: '#F0FBF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--verde)' }}>{filas.length}</div>
-                      <div style={{ fontSize: 11, color: '#065F46' }}>Filas detectadas</div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                <div style={{ flex: 1, background: '#F0FBF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--verde)' }}>{filasValidas}</div>
+                  <div style={{ fontSize: 11, color: '#065F46' }}>Filas válidas</div>
+                </div>
+                <div style={{ flex: 1, background: filasConError > 0 ? '#FFF4F4' : '#F9FAFB', border: `1px solid ${filasConError > 0 ? '#FCA5A5' : '#E5E7EB'}`, borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: filasConError > 0 ? '#DC2626' : 'var(--gris-secundario)' }}>{filasConError}</div>
+                  <div style={{ fontSize: 11, color: filasConError > 0 ? '#991B1B' : 'var(--gris-secundario)' }}>Filas con error (se omiten)</div>
+                </div>
+              </div>
+
+              {filasConError > 0 && (
+                <div style={{ background: '#FFF4F4', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán:</div>
+                  {validaciones.filter(v => !v.valida).map(v => (
+                    <div key={v.fila} style={{ fontSize: 12, color: '#DC2626', marginBottom: 2 }}>
+                      Fila {v.fila}: {v.errores.join(' · ')}
                     </div>
-                    <div style={{ flex: 1, background: '#EAF2F9', border: '1px solid #93C5FD', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--azul-primario)' }}>{filas.filter(r => r.folio_odoo).length}</div>
-                      <div style={{ fontSize: 11, color: 'var(--azul-primario)' }}>Con folio_odoo (upsert)</div>
-                    </div>
-                  </div>
-                  <div className="table-wrap" style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
-                    <table>
-                      <thead>
-                        <tr>
-                          {Object.keys(filas[0]).slice(0, 6).map(h => <th key={h}>{h}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filas.slice(0, 10).map((r, i) => (
-                          <tr key={i}>{Object.values(r).slice(0, 6).map((v, j) => <td key={j} style={{ fontSize: 12 }}>{v}</td>)}</tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--gris-secundario)', fontSize: 13 }}>
-                  ℹ️ Archivo XLSX cargado: <strong>{archivo?.name}</strong><br />
-                  El parseo de XLSX requiere la librería <code>xlsx</code> (fase siguiente). Se importarán {filas.length} filas.
+                  ))}
                 </div>
               )}
-              <div style={{ fontSize: 11, color: 'var(--gris-secundario)', marginBottom: 16 }}>⚠️ La importación registra un evento en la bitácora de cada proyecto.</div>
+
+              <div className="table-wrap" style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      {Object.keys(filas[0] || {}).slice(0, 5).map(h => <th key={h}>{h}</th>)}
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.slice(0, 20).map((r, i) => {
+                      const v = validaciones[i];
+                      return (
+                        <tr key={i} style={{ background: v?.valida ? 'transparent' : '#FFF4F4' }}>
+                          <td style={{ fontSize: 11, color: 'var(--gris-secundario)' }}>{i + 1}</td>
+                          {Object.values(r).slice(0, 5).map((val, j) => <td key={j} style={{ fontSize: 12 }}>{val}</td>)}
+                          <td style={{ fontSize: 11 }}>
+                            {v?.valida
+                              ? <span style={{ color: '#16A34A' }}>✓</span>
+                              : <span style={{ color: '#DC2626' }} title={v?.errores.join('\n')}>✗ {v?.errores[0]}</span>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ fontSize: 11, color: 'var(--gris-secundario)', marginBottom: 16 }}>
+                ⚠️ La importación registra un evento en la bitácora de cada proyecto.
+                {filas.length > 20 && ` · Mostrando 20 de ${filas.length} filas.`}
+              </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn btn-outline" onClick={reiniciar}>Cancelar</button>
-                <button className="btn btn-green" onClick={handleImportar} disabled={importando || (filas.length === 0 && fuente === 'csv')}>
-                  {importando ? 'Importando…' : '✓ Confirmar importación'}
+                <button className="btn btn-green" onClick={handleImportar} disabled={importando || filasValidas === 0}>
+                  {importando ? 'Importando…' : `✓ Importar ${filasValidas} fila${filasValidas !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </div>
@@ -205,7 +303,10 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
             <div className="card-body" style={{ textAlign: 'center', padding: '40px 20px' }}>
               <div style={{ fontSize: 56, marginBottom: 12 }}>✅</div>
               <div className="fw-700" style={{ fontSize: 16, marginBottom: 8 }}>Importación completada</div>
-              <div className="text-gray text-sm mb-16">{resultado.total} proyectos procesados desde {resultado.archivo}</div>
+              <div className="text-gray text-sm mb-16">
+                {resultado.total} proyectos procesados desde {resultado.archivo}
+                {resultado.errores > 0 && ` · ${resultado.errores} filas omitidas por errores`}
+              </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                 <button className="btn btn-outline" onClick={reiniciar}>Nueva importación</button>
                 <button className="btn btn-primary" onClick={() => setVista?.('agenda')}>Ver en Agenda →</button>

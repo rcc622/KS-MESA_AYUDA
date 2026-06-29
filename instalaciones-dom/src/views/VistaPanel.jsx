@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getProyectos, getCuadrillas, respaldoGeneral, subirRespaldoStorage, mensajeError } from '../lib/api';
+
+const COOLDOWN_RESPALDO_MS = 5 * 60 * 1000; // 5 minutos
+const LS_KEY = 'ks_ultimo_respaldo';
 
 export default function VistaPanel({ goTo, usuarioActual }) {
   const [proyectos, setProyectos] = useState([]);
@@ -7,25 +10,54 @@ export default function VistaPanel({ goTo, usuarioActual }) {
   const [loading, setLoading] = useState(true);
   const [respaldando, setRespaldando] = useState(false);
   const [msgRespaldo, setMsgRespaldo] = useState('');
+  const [segundosRestantes, setSegundosRestantes] = useState(0);
+  const timerRef = useRef(null);
 
   const esAdmin = usuarioActual?.rol === 'admin';
 
+  // Calcula segundos restantes al montar y arranca countdown si aplica
+  useEffect(() => {
+    const calcularRestante = () => {
+      const ultimo = parseInt(localStorage.getItem(LS_KEY) || '0', 10);
+      const restante = Math.max(0, Math.ceil((ultimo + COOLDOWN_RESPALDO_MS - Date.now()) / 1000));
+      setSegundosRestantes(restante);
+      return restante;
+    };
+
+    if (calcularRestante() > 0) {
+      timerRef.current = setInterval(() => {
+        const r = calcularRestante();
+        if (r === 0) clearInterval(timerRef.current);
+      }, 1000);
+    }
+    return () => clearInterval(timerRef.current);
+  }, []);
+
   const handleRespaldo = async () => {
+    if (segundosRestantes > 0) return;
     setRespaldando(true); setMsgRespaldo('');
     try {
       const data = await respaldoGeneral();
       const json = JSON.stringify(data, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const nombre = `respaldo-kenet-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
-      // 1) descarga local (siempre)
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = nombre; a.click(); URL.revokeObjectURL(url);
-      // 2) nube (best-effort)
       let nube;
       try { await subirRespaldoStorage(nombre, blob); nube = '☁️ guardado en Supabase Storage'; }
-      catch (e) { nube = '⚠️ nube no configurada (crea el bucket "respaldos" en Supabase Storage)'; }
+      catch { nube = '⚠️ nube no configurada (crea el bucket "respaldos" en Supabase Storage)'; }
       const total = Object.values(data.tablas).reduce((s, arr) => s + (arr?.length || 0), 0);
       setMsgRespaldo(`✅ Respaldo descargado · ${total} registros de ${Object.keys(data.tablas).length} tablas · ${nube}`);
+
+      // Registra timestamp y arranca countdown
+      localStorage.setItem(LS_KEY, Date.now().toString());
+      setSegundosRestantes(COOLDOWN_RESPALDO_MS / 1000);
+      timerRef.current = setInterval(() => {
+        setSegundosRestantes(prev => {
+          if (prev <= 1) { clearInterval(timerRef.current); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
     } catch (e) {
       setMsgRespaldo('❌ ' + mensajeError(e));
     } finally {
@@ -108,8 +140,12 @@ export default function VistaPanel({ goTo, usuarioActual }) {
               <div className="text-sm text-gray" style={{ marginBottom: 12 }}>
                 Exporta <strong>toda</strong> la información de la plataforma (todos los módulos) a un archivo JSON: se descarga y, si el bucket está configurado, se guarda en la nube (Supabase ahora · Google Drive a futuro).
               </div>
-              <button className="btn btn-primary" onClick={handleRespaldo} disabled={respaldando}>
-                {respaldando ? 'Generando respaldo…' : '⬇️ Generar respaldo'}
+              <button className="btn btn-primary" onClick={handleRespaldo} disabled={respaldando || segundosRestantes > 0}>
+                {respaldando
+                  ? 'Generando respaldo…'
+                  : segundosRestantes > 0
+                    ? `⏳ Disponible en ${Math.floor(segundosRestantes / 60)}:${String(segundosRestantes % 60).padStart(2, '0')}`
+                    : '⬇️ Generar respaldo'}
               </button>
               {msgRespaldo && (
                 <div className="text-sm" style={{ marginTop: 10, color: msgRespaldo.startsWith('❌') ? 'var(--rojo)' : 'var(--gris-texto)' }}>{msgRespaldo}</div>

@@ -85,7 +85,7 @@ export async function getBitacora(proyecto_id) {
 }
 
 // Log global: todos los movimientos de todos los proyectos (con proyecto + usuario).
-export async function getBitacoraGlobal({ limite = 500 } = {}) {
+export async function getBitacoraGlobal({ limite = 100 } = {}) {
   const { data, error } = await supabase
     .from('bitacora')
     .select('*, usuario:usuarios(id,nombre), proyecto:proyectos(folio,cliente,zona)')

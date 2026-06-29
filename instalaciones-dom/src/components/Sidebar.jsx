@@ -22,6 +22,7 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
     { id: 'import',      icon: 'upload',     label: 'Importar Proyectos',  section: 'Datos' },
     { id: 'cortes',      icon: 'dollar',     label: 'Cortes de Pago',      section: 'Finanzas' },
     { id: 'cuadrillas',  icon: 'users',      label: 'Config. Cuadrillas',  section: 'Configuración' },
+    { id: 'usuarios',   icon: 'user',       label: 'Gestión de Usuarios', section: 'Administración' },
   ].filter(i => !vistasPermitidas || vistasPermitidas.includes(i.id));
 
   const handleNav = (id) => {

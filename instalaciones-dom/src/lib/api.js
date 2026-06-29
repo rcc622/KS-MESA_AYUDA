@@ -152,6 +152,24 @@ export async function getUsuarios({ rol, zona } = {}) {
   return data;
 }
 
+export async function getTodosUsuarios() {
+  const { data, error } = await supabase.from('usuarios').select('*').order('nombre');
+  if (error) throw error;
+  return data;
+}
+
+export async function crearUsuarioPerfil(payload) {
+  const { data, error } = await supabase.from('usuarios').insert(payload).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function actualizarUsuarioPerfil(id, payload) {
+  const { data, error } = await supabase.from('usuarios').update(payload).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 // Traduce errores técnicos de Postgres/PostgREST a mensajes claros en español.
 export function mensajeError(e) {
   const m = e?.message || String(e || '');

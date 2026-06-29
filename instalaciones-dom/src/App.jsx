@@ -14,12 +14,13 @@ import VistaE_Import from './views/VistaE_Import';
 import VistaF_Reporte from './views/VistaF_Reporte';
 import VistaI_Cortes from './views/VistaI_Cortes';
 import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
+import VistaG_Usuarios from './views/VistaG_Usuarios';
 
 // Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
 // de campo; los demás roles ven la plataforma completa.
 function vistasPorRol(rol) {
-  if (rol === 'instalador') return ['reporte', 'archivo'];   // su módulo de campo + su historial
-  // admin / pm_domestico / coordinador: todo MENOS el reporte de campo (lo llena el instalador)
+  if (rol === 'instalador') return ['reporte', 'archivo'];
+  if (rol === 'admin') return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos', 'usuarios'];
   return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos'];
 }
 function rolLabel(rol) {
@@ -151,6 +152,7 @@ export default function App() {
       case 'movimientos': return <VistaLog />;
       case 'cortes':      return <VistaI_Cortes />;
       case 'cuadrillas':  return <VistaL_Cuadrillas />;
+      case 'usuarios':    return <VistaG_Usuarios usuarioActual={usuarioActual} />;
       default: return null;
     }
   };

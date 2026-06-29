@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { upsertProyectos, agregarBitacora, mensajeError } from '../lib/api';
 
-export default function VistaE_Import({ usuarioActual }) {
+export default function VistaE_Import({ usuarioActual, setVista }) {
   const [fuente, setFuente] = useState('csv');
   const [archivo, setArchivo] = useState(null);
   const [etapa, setEtapa] = useState('seleccion');
@@ -208,7 +208,7 @@ export default function VistaE_Import({ usuarioActual }) {
               <div className="text-gray text-sm mb-16">{resultado.total} proyectos procesados desde {resultado.archivo}</div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                 <button className="btn btn-outline" onClick={reiniciar}>Nueva importación</button>
-                <button className="btn btn-primary">Ver en Agenda →</button>
+                <button className="btn btn-primary" onClick={() => setVista?.('agenda')}>Ver en Agenda →</button>
               </div>
             </div>
           </div>

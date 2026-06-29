@@ -1,5 +1,34 @@
 import { supabase } from './supabase';
 
+// ── RESPALDO GENERAL ──────────────────────────────────────────
+// Tablas a respaldar (se amplía conforme se agreguen módulos).
+const TABLAS_RESPALDO = [
+  'usuarios', 'cuadrillas', 'cuadrilla_miembros', 'reglas_cuadrilla',
+  'proyectos', 'bitacora', 'cortes_pago', 'vueltas', 'corte_kpis',
+];
+
+// Descarga toda la data de cada tabla en un objeto. Errores por tabla no
+// abortan el respaldo (se listan aparte).
+export async function respaldoGeneral() {
+  const tablas = {};
+  const errores = [];
+  for (const t of TABLAS_RESPALDO) {
+    const { data, error } = await supabase.from(t).select('*');
+    if (error) { errores.push(`${t}: ${error.message}`); continue; }
+    tablas[t] = data || [];
+  }
+  return { generado_en: new Date().toISOString(), version: 1, tablas, errores };
+}
+
+// Sube el respaldo al bucket "respaldos" de Supabase Storage (si existe).
+export async function subirRespaldoStorage(nombre, blob) {
+  const { error } = await supabase.storage.from('respaldos').upload(nombre, blob, {
+    contentType: 'application/json', upsert: true,
+  });
+  if (error) throw error;
+  return true;
+}
+
 // ── PROYECTOS ─────────────────────────────────────────────────
 export async function getProyectos({ zona, estatus } = {}) {
   let q = supabase

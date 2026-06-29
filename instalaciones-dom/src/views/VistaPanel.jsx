@@ -1,10 +1,37 @@
 import { useState, useEffect } from 'react';
-import { getProyectos, getCuadrillas } from '../lib/api';
+import { getProyectos, getCuadrillas, respaldoGeneral, subirRespaldoStorage, mensajeError } from '../lib/api';
 
-export default function VistaPanel({ goTo }) {
+export default function VistaPanel({ goTo, usuarioActual }) {
   const [proyectos, setProyectos] = useState([]);
   const [cuadrillas, setCuadrillas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [respaldando, setRespaldando] = useState(false);
+  const [msgRespaldo, setMsgRespaldo] = useState('');
+
+  const esAdmin = usuarioActual?.rol === 'admin';
+
+  const handleRespaldo = async () => {
+    setRespaldando(true); setMsgRespaldo('');
+    try {
+      const data = await respaldoGeneral();
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const nombre = `respaldo-kenet-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      // 1) descarga local (siempre)
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = nombre; a.click(); URL.revokeObjectURL(url);
+      // 2) nube (best-effort)
+      let nube;
+      try { await subirRespaldoStorage(nombre, blob); nube = '☁️ guardado en Supabase Storage'; }
+      catch (e) { nube = '⚠️ nube no configurada (crea el bucket "respaldos" en Supabase Storage)'; }
+      const total = Object.values(data.tablas).reduce((s, arr) => s + (arr?.length || 0), 0);
+      setMsgRespaldo(`✅ Respaldo descargado · ${total} registros de ${Object.keys(data.tablas).length} tablas · ${nube}`);
+    } catch (e) {
+      setMsgRespaldo('❌ ' + mensajeError(e));
+    } finally {
+      setRespaldando(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([getProyectos(), getCuadrillas({ activa: true })])
@@ -73,6 +100,23 @@ export default function VistaPanel({ goTo }) {
             <button className="btn btn-outline btn-sm" style={{ marginTop: 12 }} onClick={() => goTo('cuadrillas')}>Configurar →</button>
           </div></div>
         </div>
+
+        {esAdmin && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header"><h3>🗄️ Respaldo general</h3></div>
+            <div className="card-body">
+              <div className="text-sm text-gray" style={{ marginBottom: 12 }}>
+                Exporta <strong>toda</strong> la información de la plataforma (todos los módulos) a un archivo JSON: se descarga y, si el bucket está configurado, se guarda en la nube (Supabase ahora · Google Drive a futuro).
+              </div>
+              <button className="btn btn-primary" onClick={handleRespaldo} disabled={respaldando}>
+                {respaldando ? 'Generando respaldo…' : '⬇️ Generar respaldo'}
+              </button>
+              {msgRespaldo && (
+                <div className="text-sm" style={{ marginTop: 10, color: msgRespaldo.startsWith('❌') ? 'var(--rojo)' : 'var(--gris-texto)' }}>{msgRespaldo}</div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="card">
           <div className="card-header"><h3>Accesos rápidos</h3></div>

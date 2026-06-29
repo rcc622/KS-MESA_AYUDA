@@ -138,7 +138,7 @@ export default function App() {
   const props = { setVista, setProyectoSeleccionado, usuarioActual };
 
   const renderVista = () => {
-    if (modulo === 'mesa') return <VistaPanel goTo={(v) => { setModulo('instalaciones'); setVista(v); }} />;
+    if (modulo === 'mesa') return <VistaPanel goTo={(v) => { setModulo('instalaciones'); setVista(v); }} usuarioActual={usuarioActual} />;
     switch (vista) {
       case 'agenda':      return <VistaA_Agenda      {...props} />;
       case 'detalle':     return <VistaC_Detalle      {...props} proyecto={proyectoSeleccionado} />;

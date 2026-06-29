@@ -42,8 +42,10 @@ body {
   position: fixed;
   top: 0; left: 0;
   height: 100vh;
+  height: 100dvh;          /* altura visible real en móvil (evita que el footer quede fuera) */
   z-index: 100;
 }
+.sidebar-logo, .mod-switcher, .sidebar-footer { flex-shrink: 0; }
 
 .sidebar-logo {
   padding: 18px 14px 16px;

@@ -145,8 +145,12 @@ export default function VistaF_Reporte({ usuarioActual }) {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {proyectos.map(p => (
-                  <div key={p.id} className="card" style={{ cursor: 'pointer' }} onClick={() => abrirReporte(p)}>
+                {proyectos.map(p => {
+                  const hoy = new Date().toISOString().slice(0, 10);
+                  const conFecha = !!p.fecha_agenda;
+                  const puedeIniciar = conFecha && p.fecha_agenda <= hoy;   // hay fecha y ya llegó el día
+                  return (
+                  <div key={p.id} className="card" style={{ cursor: puedeIniciar ? 'pointer' : 'default' }} onClick={() => puedeIniciar && abrirReporte(p)}>
                     <div className="card-body">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                         <div>
@@ -161,19 +165,26 @@ export default function VistaF_Reporte({ usuarioActual }) {
                       {p.direccion && <div className="text-sm text-gray" style={{ marginBottom: 8 }}>📍 {p.direccion}</div>}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                         <span className="badge badge-zona">{p.zona}</span>
-                        <span className="badge" style={{ background: '#EAF2F9', color: 'var(--azul-primario)' }}>📅 {p.fecha_agenda || 'Sin fecha'}</span>
+                        <span className="badge" style={{ background: conFecha ? '#EAF2F9' : '#FEF3C7', color: conFecha ? 'var(--azul-primario)' : '#92400E' }}>📅 {p.fecha_agenda || 'Sin fecha confirmada'}</span>
                       </div>
                       {equipoChips(p).length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', background: '#F9FAFB', borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
                           {equipoChips(p).map((c, i) => <span key={i}>{c}</span>)}
                         </div>
                       )}
-                      <button className="btn btn-ambar w-full" style={{ justifyContent: 'center' }} onClick={(e) => { e.stopPropagation(); abrirReporte(p); }}>
-                        Iniciar reporte →
-                      </button>
+                      {puedeIniciar ? (
+                        <button className="btn btn-ambar w-full" style={{ justifyContent: 'center' }} onClick={(e) => { e.stopPropagation(); abrirReporte(p); }}>
+                          Iniciar reporte →
+                        </button>
+                      ) : (
+                        <button className="btn btn-outline w-full" disabled style={{ justifyContent: 'center', opacity: 0.65 }}>
+                          {!conFecha ? '⏳ Pendiente de agendar fecha' : `📅 Programada para ${p.fecha_agenda}`}
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -325,6 +325,8 @@ textarea { resize: vertical; min-height: 80px; }
 
 /* ─── Info pills (detalle) ─── */
 .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.detalle-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+.col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .info-item { background: #F9FAFB; border-radius: 8px; padding: 10px 12px; }
 .info-item .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--gris-secundario); font-weight: 600; }
 .info-item .info-val { font-size: 14px; font-weight: 700; margin-top: 2px; }
@@ -427,6 +429,7 @@ textarea { resize: vertical; min-height: 80px; }
   .filters-bar select,
   .filters-bar input[type="text"] { width: 100%; min-width: 0; }
   .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .detalle-grid, .col2 { grid-template-columns: 1fr; }
 
   /* Modal casi a pantalla completa */
   .modal-box { width: 94vw; max-width: 94vw; }

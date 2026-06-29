@@ -229,18 +229,11 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <EstatusBadge estatus={proyecto.estatus} />
           <button className="btn btn-outline btn-sm" onClick={() => setModalNota(true)}>+ Agregar nota</button>
-          {proyecto.estatus === 'agendado' && (
-            <button className="btn btn-green btn-sm" onClick={async () => {
-              await agregarBitacora({ proyecto_id: proyecto.id, tipo: 'inicio', descripcion: 'Instalación iniciada. Cuadrilla en sitio.', usuario_id: usuarioActual?.id ?? null });
-              await actualizarProyecto(proyecto.id, { estatus: 'en_progreso' });
-              cargarBitacora();
-            }}>Iniciar instalación</button>
-          )}
         </div>
       </div>
 
       <div className="page-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
+        <div className="detalle-grid">
           <div>
             <div className="card mb-16">
               <div className="card-header">

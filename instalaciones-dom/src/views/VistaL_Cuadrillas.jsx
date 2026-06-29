@@ -143,7 +143,7 @@ export default function VistaL_Cuadrillas() {
 
               {isExpandida && (
                 <div className="cuadrilla-card-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                  <div className="col2">
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--gris-secundario)' }}>Configuración</div>

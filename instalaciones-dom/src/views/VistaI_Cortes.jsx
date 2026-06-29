@@ -137,7 +137,7 @@ export default function VistaI_Cortes() {
 
               {isExterna && (
                 <div className="corte-body">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="col2">
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gris-secundario)', textTransform: 'uppercase', marginBottom: 8 }}>Cálculo</div>
                       <div className="corte-row">

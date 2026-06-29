@@ -29,6 +29,15 @@ export async function subirRespaldoStorage(nombre, blob) {
   return true;
 }
 
+// Sube evidencia (foto o PDF del reporte) al bucket "evidencias".
+export async function subirEvidencia(path, blob) {
+  const { error } = await supabase.storage.from('evidencias').upload(path, blob, {
+    contentType: blob.type || 'application/octet-stream', upsert: true,
+  });
+  if (error) throw error;
+  return true;
+}
+
 // ── PROYECTOS ─────────────────────────────────────────────────
 export async function getProyectos({ zona, estatus } = {}) {
   let q = supabase

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
-import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError } from '../lib/api';
+import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError, subirEvidencia } from '../lib/api';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import FirmaCanvas from '../components/FirmaCanvas';
@@ -35,6 +35,15 @@ function equipoChips(p) {
   return chips;
 }
 
+function dataURLtoBlob(dataUrl) {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = (meta.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
 export default function VistaF_Reporte({ usuarioActual }) {
   const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +55,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const [nombreFirma, setNombreFirma] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [respaldoEv, setRespaldoEv] = useState('');
   const [etapaActiva, setEtapaActiva] = useState('checklist');
 
   const esInstalador = usuarioActual?.rol === 'instalador';
@@ -88,7 +98,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
 
   const reiniciar = () => {
     setEnviado(false); setChecks({}); setFotos({ antes: [], durante: [], despues: [] });
-    setFirmaUrl(null); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
+    setFirmaUrl(null); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist'); setRespaldoEv('');
   };
 
   const abrirReporte = async (p) => {
@@ -172,6 +182,24 @@ export default function VistaF_Reporte({ usuarioActual }) {
         descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles. Checklist: ${pct}%. Fotos: ${fotos.antes.length + fotos.durante.length + fotos.despues.length}. Firma: ${nombreFirma}. Obs: ${observaciones || 'ninguna'}`,
         usuario_id: usuarioActual?.id ?? null,
       });
+      // Respaldo de evidencias en Supabase Storage (best-effort, no bloquea el envío)
+      const folio = proyecto?.folio || 'sin-folio';
+      const ts = Date.now();
+      try {
+        let n = 0;
+        for (const [etapa, lista] of [['antes', fotos.antes], ['durante', fotos.durante], ['despues', fotos.despues]]) {
+          for (let i = 0; i < lista.length; i++) {
+            const blob = dataURLtoBlob(lista[i].dataUrl);
+            const ext = blob.type.includes('png') ? 'png' : 'jpg';
+            await subirEvidencia(`${folio}/${ts}/${etapa}-${i + 1}.${ext}`, blob);
+            n++;
+          }
+        }
+        await subirEvidencia(`${folio}/${ts}/reporte.pdf`, doc.output('blob'));
+        setRespaldoEv(`☁️ ${n} foto(s) + PDF respaldados en la nube`);
+      } catch (e) {
+        setRespaldoEv('⚠️ Evidencias no respaldadas — crea el bucket "evidencias" en Supabase Storage');
+      }
       await compartirPDF(doc);
       setEnviado(true);
     } catch (e) {
@@ -194,6 +222,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
               <div style={{ fontSize: 60, marginBottom: 16 }}>✅</div>
               <div className="fw-700" style={{ fontSize: 17, marginBottom: 8 }}>Reporte enviado</div>
               <div className="text-gray text-sm mb-16">Instalación registrada y reporte en PDF generado. Si no se abrió el menú de compartir, el PDF se descargó — adjúntalo en WhatsApp a tu PM.</div>
+              {respaldoEv && <div className="text-xs text-gray mb-16">{respaldoEv}</div>}
               <button className="btn btn-primary" onClick={volverALista}>← Volver a mis instalaciones</button>
             </div>
           </div>

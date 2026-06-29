@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { jsPDF } from 'jspdf';
 import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError } from '../lib/api';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
+import FirmaCanvas from '../components/FirmaCanvas';
 
 const CHECKLIST = [
   'Revisión de estructura de techo',
@@ -40,7 +42,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const [checks, setChecks] = useState({});
   const [fotos, setFotos] = useState({ antes: [], durante: [], despues: [] });
   const [observaciones, setObservaciones] = useState('');
-  const [firmado, setFirmado] = useState(false);
+  const [firmaUrl, setFirmaUrl] = useState(null);
   const [nombreFirma, setNombreFirma] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
@@ -74,11 +76,19 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const checksPasados = CHECKLIST.filter((_, i) => checks[i]).length;
   const pct = Math.round((checksPasados / CHECKLIST.length) * 100);
 
-  const simularFoto = (etapa) => setFotos(f => ({ ...f, [etapa]: [...f[etapa], 'foto'] }));
+  const agregarFotos = (etapa, fileList) => {
+    Array.from(fileList || []).forEach(f => {
+      if (!f.type?.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = () => setFotos(prev => ({ ...prev, [etapa]: [...prev[etapa], { name: f.name, dataUrl: reader.result }] }));
+      reader.readAsDataURL(f);
+    });
+  };
+  const quitarFoto = (etapa, idx) => setFotos(prev => ({ ...prev, [etapa]: prev[etapa].filter((_, i) => i !== idx) }));
 
   const reiniciar = () => {
     setEnviado(false); setChecks({}); setFotos({ antes: [], durante: [], despues: [] });
-    setFirmado(false); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
+    setFirmaUrl(null); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist');
   };
 
   const abrirReporte = async (p) => {
@@ -94,20 +104,75 @@ export default function VistaF_Reporte({ usuarioActual }) {
   };
   const volverALista = () => { reiniciar(); setProyectoId(''); cargar(); };
 
+  const generarPDF = () => {
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const fmtOf = (url) => (url && url.includes('image/png') ? 'PNG' : 'JPEG');
+    const hoy = new Date().toISOString().slice(0, 10);
+    let y = 44;
+    doc.setFontSize(16); doc.setTextColor('#1F4E79'); doc.text('Reporte de Instalación · KENET Solar', 40, y); y += 24;
+    doc.setFontSize(10); doc.setTextColor('#333333');
+    const linea = (t) => { doc.text(t, 40, y, { maxWidth: W - 80 }); y += 15; };
+    linea(`Folio: ${proyecto?.folio || '—'}    OV Odoo: ${proyecto?.folio_odoo || '—'}`);
+    linea(`Cliente: ${proyecto?.cliente || '—'}`);
+    linea(`Direccion: ${proyecto?.direccion || '—'}`);
+    linea(`Zona: ${proyecto?.zona || '—'}    Fecha de instalacion: ${hoy}`);
+    linea(`Equipo: ${equipoChips(proyecto || {}).join('   ')}`);
+    y += 8;
+    doc.setFontSize(12); doc.setTextColor('#1F4E79'); doc.text(`Checklist (${pct}%)`, 40, y); y += 16;
+    doc.setFontSize(10); doc.setTextColor('#333333');
+    CHECKLIST.forEach((item, i) => { doc.text(`${checks[i] ? '[X]' : '[  ]'}  ${item}`, 48, y); y += 14; });
+    y += 10;
+    doc.setFontSize(12); doc.setTextColor('#1F4E79'); doc.text('Observaciones', 40, y); y += 15;
+    doc.setFontSize(10); doc.setTextColor('#333333'); doc.text(observaciones || 'Ninguna', 48, y, { maxWidth: W - 96 }); y += 36;
+    doc.setFontSize(12); doc.setTextColor('#1F4E79'); doc.text('Conformidad del cliente', 40, y); y += 12;
+    if (firmaUrl) { try { doc.addImage(firmaUrl, 'PNG', 48, y, 170, 66); } catch (e) { /* firma invalida */ } }
+    doc.setFontSize(10); doc.setTextColor('#333333'); doc.text(`Firma: ${nombreFirma}`, 240, y + 36);
+    const todas = [
+      ...fotos.antes.map(f => ({ ...f, etapa: 'Antes' })),
+      ...fotos.durante.map(f => ({ ...f, etapa: 'Durante' })),
+      ...fotos.despues.map(f => ({ ...f, etapa: 'Resultado' })),
+    ];
+    if (todas.length) {
+      doc.addPage(); let py = 44; let px = 40; const imgW = 150; const imgH = 112; const gap = 16;
+      doc.setFontSize(14); doc.setTextColor('#1F4E79'); doc.text('Evidencia fotografica', 40, py); py += 22;
+      todas.forEach((f) => {
+        if (px + imgW > W - 40) { px = 40; py += imgH + 26; }
+        if (py + imgH + 26 > H - 30) { doc.addPage(); py = 44; px = 40; }
+        try { doc.addImage(f.dataUrl, fmtOf(f.dataUrl), px, py, imgW, imgH); } catch (e) { /* imagen invalida */ }
+        doc.setFontSize(8); doc.setTextColor('#666666'); doc.text(f.etapa, px, py + imgH + 12);
+        px += imgW + gap;
+      });
+    }
+    return doc;
+  };
+
+  const compartirPDF = async (doc) => {
+    const nombre = `Reporte-${proyecto?.folio || 'instalacion'}.pdf`;
+    const texto = `Reporte de instalación ${proyecto?.folio || ''} — ${proyecto?.cliente || ''}`;
+    const blob = doc.output('blob');
+    const file = new File([blob], nombre, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: nombre, text: texto }); return; } catch (e) { /* cancelado o no soportado -> descarga */ }
+    }
+    doc.save(nombre);
+    try { window.open(`https://wa.me/?text=${encodeURIComponent(texto + ' (PDF descargado, adjúntalo aquí)')}`, '_blank'); } catch (e) { /* popup bloqueado */ }
+  };
+
   const handleEnviar = async () => {
-    if (!firmado || !nombreFirma.trim()) { alert('Obtén la firma del cliente antes de enviar.'); return; }
+    if (!firmaUrl || !nombreFirma.trim()) { alert('Captura la firma del cliente antes de enviar.'); return; }
     setEnviando(true);
     try {
-      await actualizarProyecto(proyectoId, {
-        estatus: 'completado',
-        fecha_instalacion: new Date().toISOString().slice(0, 10),
-      });
+      const doc = generarPDF();
+      await actualizarProyecto(proyectoId, { estatus: 'completado', fecha_instalacion: new Date().toISOString().slice(0, 10) });
       await agregarBitacora({
         proyecto_id: proyectoId,
         tipo: 'cierre',
-        descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles instalados. Checklist: ${pct}%. Firma: ${nombreFirma}. Observaciones: ${observaciones || 'ninguna'}`,
+        descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles. Checklist: ${pct}%. Fotos: ${fotos.antes.length + fotos.durante.length + fotos.despues.length}. Firma: ${nombreFirma}. Obs: ${observaciones || 'ninguna'}`,
         usuario_id: usuarioActual?.id ?? null,
       });
+      await compartirPDF(doc);
       setEnviado(true);
     } catch (e) {
       alert(mensajeError(e));
@@ -128,7 +193,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
             <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
               <div style={{ fontSize: 60, marginBottom: 16 }}>✅</div>
               <div className="fw-700" style={{ fontSize: 17, marginBottom: 8 }}>Reporte enviado</div>
-              <div className="text-gray text-sm mb-16">Instalación registrada. El PM recibirá notificación.</div>
+              <div className="text-gray text-sm mb-16">Instalación registrada y reporte en PDF generado. Si no se abrió el menú de compartir, el PDF se descargó — adjúntalo en WhatsApp a tu PM.</div>
               <button className="btn btn-primary" onClick={volverALista}>← Volver a mis instalaciones</button>
             </div>
           </div>
@@ -272,14 +337,20 @@ export default function VistaF_Reporte({ usuarioActual }) {
                   <div className="card-body">
                     {fotos[etapa.key].length > 0 && (
                       <div className="foto-preview mb-12">
-                        {fotos[etapa.key].map((_, i) => <div key={i} className="foto-thumb">📸</div>)}
+                        {fotos[etapa.key].map((foto, i) => (
+                          <div key={i} className="foto-thumb-wrap" onClick={() => quitarFoto(etapa.key, i)} title="Tocar para quitar">
+                            <img src={foto.dataUrl} alt="" className="foto-thumb-img" />
+                            <span className="foto-thumb-x">✕</span>
+                          </div>
+                        ))}
                       </div>
                     )}
-                    <div className="upload-box" onClick={() => simularFoto(etapa.key)}>
+                    <label className="upload-box" style={{ cursor: 'pointer' }}>
+                      <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => { agregarFotos(etapa.key, e.target.files); e.target.value = ''; }} />
                       <div className="ub-icon">📷</div>
                       <div className="text-sm fw-600">Tomar foto / Seleccionar</div>
-                      <div className="text-xs text-gray mt-4">JPG, PNG · Máx. 10 MB</div>
-                    </div>
+                      <div className="text-xs text-gray mt-4">Cámara o galería · varias a la vez</div>
+                    </label>
                   </div>
                 </div>
               ))}
@@ -308,25 +379,19 @@ export default function VistaF_Reporte({ usuarioActual }) {
                   <label>Nombre del cliente (firma)</label>
                   <input value={nombreFirma} onChange={e => setNombreFirma(e.target.value)} placeholder="Nombre completo del cliente" />
                 </div>
-                <div
-                  style={{ border: `2px dashed ${firmado ? 'var(--verde)' : 'var(--borde)'}`, borderRadius: 10, padding: '32px 20px', textAlign: 'center', cursor: 'pointer', marginBottom: 16, background: firmado ? '#F0FBF4' : 'white', transition: 'all .2s' }}
-                  onClick={() => setFirmado(true)}
-                >
-                  {firmado ? (
-                    <><div style={{ fontSize: 32, marginBottom: 8 }}>✅</div><div className="fw-700 text-green">Firma capturada</div><div className="text-sm text-gray">{nombreFirma}</div></>
-                  ) : (
-                    <><div style={{ fontSize: 32, marginBottom: 8 }}>✍️</div><div className="fw-700">Zona de firma del cliente</div><div className="text-sm text-gray">Toca aquí para capturar la firma</div></>
-                  )}
+                <div className="form-group">
+                  <label>Firma del cliente</label>
+                  <FirmaCanvas onChange={setFirmaUrl} />
                 </div>
                 <button
-                  className={`btn w-full ${firmado && nombreFirma ? 'btn-green' : 'btn-outline'}`}
+                  className={`btn w-full ${firmaUrl && nombreFirma ? 'btn-green' : 'btn-outline'}`}
                   style={{ justifyContent: 'center', fontSize: 14 }}
                   onClick={handleEnviar}
-                  disabled={!firmado || !nombreFirma.trim() || enviando}
+                  disabled={!firmaUrl || !nombreFirma.trim() || enviando}
                 >
-                  {enviando ? 'Enviando…' : '📤 Enviar reporte al PM'}
+                  {enviando ? 'Generando PDF…' : '📤 Enviar reporte (PDF / WhatsApp)'}
                 </button>
-                {(!firmado || !nombreFirma) && <div className="text-xs text-gray text-center mt-8">Se requiere nombre y firma del cliente</div>}
+                {(!firmaUrl || !nombreFirma) && <div className="text-xs text-gray text-center mt-8">Se requiere nombre y firma del cliente</div>}
               </div>
             </div>
           )}

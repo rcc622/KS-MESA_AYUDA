@@ -132,7 +132,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
   const abrirEditar = () => {
     const p = proyecto;
     setFormEdit({
-      cliente: p.cliente || '', telefono: p.telefono || '', direccion: p.direccion || '',
+      cliente: p.cliente || '', telefono: p.telefono || '', direccion: p.direccion || '', maps_url: p.maps_url || '',
       zona: p.zona || 'MTY', folio_odoo: p.folio_odoo || '', cuadrilla_id: p.cuadrilla_id || '',
       paneles: p.paneles ?? '', panel_potencia_w: p.panel_potencia_w ?? '', panel_marca: p.panel_marca || '',
       inversor_tipo: p.inversor_tipo || '', inversor_cantidad: p.inversor_cantidad ?? '',
@@ -151,6 +151,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
         cliente: formEdit.cliente,
         telefono: formEdit.telefono || null,
         direccion: formEdit.direccion || null,
+        maps_url: formEdit.maps_url || null,
         zona: formEdit.zona,
         folio_odoo: formEdit.folio_odoo || null,
         cuadrilla_id: formEdit.cuadrilla_id || null,
@@ -249,6 +250,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
                   <div className="info-item"><div className="info-label">Fecha agenda</div><div className="info-val">{fechaMostrada || '—'}</div></div>
                   <div className="info-item"><div className="info-label">Fecha instalación</div><div className="info-val">{proyecto.fecha_instalacion || '—'}</div></div>
                   <div className="info-item" style={{ gridColumn: '1/-1' }}><div className="info-label">Dirección</div><div className="info-val" style={{ fontWeight: 400 }}>{proyecto.direccion || '—'}</div></div>
+                  {proyecto.maps_url && <div className="info-item" style={{ gridColumn: '1/-1' }}><div className="info-label">Ubicación</div><div className="info-val"><a href={proyecto.maps_url} target="_blank" rel="noreferrer" className="text-blue" style={{ fontWeight: 600 }}>📍 Abrir en Google Maps</a></div></div>}
                 </div>
                 {proyecto.notas && (
                   <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 12px', fontSize: 13, marginTop: 8 }}>
@@ -382,6 +384,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
               <div className="form-group"><label>Teléfono</label><input value={formEdit.telefono} onChange={e => setFormEdit(f => ({ ...f, telefono: e.target.value }))} /></div>
             </div>
             <div className="form-group"><label>Dirección</label><input value={formEdit.direccion} onChange={e => setFormEdit(f => ({ ...f, direccion: e.target.value }))} /></div>
+            <div className="form-group"><label>Link de Google Maps</label><input type="url" value={formEdit.maps_url} onChange={e => setFormEdit(f => ({ ...f, maps_url: e.target.value }))} placeholder="https://maps.app.goo.gl/…" /></div>
             <div className="form-row">
               <div className="form-group"><label>Zona</label>
                 <select value={formEdit.zona} onChange={e => setFormEdit(f => ({ ...f, zona: e.target.value }))}>

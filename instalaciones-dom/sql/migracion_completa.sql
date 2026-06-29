@@ -8,6 +8,7 @@
 
 -- Equipo + reagende en proyectos
 ALTER TABLE proyectos
+  ADD COLUMN IF NOT EXISTS maps_url              TEXT,           -- link de Google Maps
   ADD COLUMN IF NOT EXISTS panel_potencia_w      INTEGER,        -- potencia por panel (W)
   ADD COLUMN IF NOT EXISTS panel_marca           TEXT,
   ADD COLUMN IF NOT EXISTS inversor_tipo         TEXT,           -- 'inversor' | 'microinversor'

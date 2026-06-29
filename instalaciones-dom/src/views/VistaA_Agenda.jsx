@@ -20,7 +20,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
 
   const WATTS_POR_PANEL = 600;   // base fija para calcular el tamaño del sistema (kWp)
   const PROY_VACIO = {
-    folio: '', folio_odoo: '', cliente: '', direccion: '',
+    folio: '', folio_odoo: '', cliente: '', direccion: '', maps_url: '',
     zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', notas: '',
     panel_potencia_w: '', panel_marca: '',
     inversor_tipo: '', inversor_cantidad: '', inversor_capacidad_kw: '', inversor_marca: '',
@@ -73,6 +73,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         ...nuevoProy,
         folio_odoo:   nuevoProy.folio_odoo || null,
         direccion:    nuevoProy.direccion || null,
+        maps_url:     nuevoProy.maps_url || null,
         fecha_agenda: nuevoProy.fecha_agenda || null,
         paneles,
         kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,   // auto: paneles × 600 W
@@ -228,6 +229,10 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           <div className="form-group">
             <label>Dirección</label>
             <input value={nuevoProy.direccion} onChange={e => setNuevoProy(p => ({ ...p, direccion: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label>Link de Google Maps <span className="text-gray text-xs">(opcional)</span></label>
+            <input type="url" value={nuevoProy.maps_url} onChange={e => setNuevoProy(p => ({ ...p, maps_url: e.target.value }))} placeholder="https://maps.app.goo.gl/…" />
           </div>
           <div className="form-row">
             <div className="form-group">

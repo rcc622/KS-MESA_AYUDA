@@ -127,6 +127,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
     linea(`Folio: ${proyecto?.folio || '—'}    OV Odoo: ${proyecto?.folio_odoo || '—'}`);
     linea(`Cliente: ${proyecto?.cliente || '—'}`);
     linea(`Direccion: ${proyecto?.direccion || '—'}`);
+    if (proyecto?.maps_url) linea(`Maps: ${proyecto.maps_url}`);
     linea(`Zona: ${proyecto?.zona || '—'}    Fecha de instalacion: ${hoy}`);
     linea(`Equipo: ${equipoChips(proyecto || {}).join('   ')}`);
     y += 8;
@@ -266,7 +267,8 @@ export default function VistaF_Reporte({ usuarioActual }) {
                           <EstatusBadge estatus={p.estatus} fecha={p.fecha_agenda} />
                         </div>
                       </div>
-                      {p.direccion && <div className="text-sm text-gray" style={{ marginBottom: 8 }}>📍 {p.direccion}</div>}
+                      {p.direccion && <div className="text-sm text-gray" style={{ marginBottom: p.maps_url ? 2 : 8 }}>📍 {p.direccion}</div>}
+                      {p.maps_url && <a href={p.maps_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-blue fw-600" style={{ display: 'inline-block', fontSize: 12, marginBottom: 8 }}>🧭 Cómo llegar (Maps)</a>}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                         <span className="badge badge-zona">{p.zona}</span>
                         <span className="badge" style={{ background: conFecha ? '#EAF2F9' : '#FEF3C7', color: conFecha ? 'var(--azul-primario)' : '#92400E' }}>📅 {p.fecha_agenda || 'Sin fecha confirmada'}</span>
@@ -318,6 +320,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
           <div style={{ background: 'var(--azul-claro)', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
             <div className="fw-700 text-blue">{proyecto.folio} · {proyecto.cliente}</div>
             {proyecto.direccion && <div>📍 {proyecto.direccion}</div>}
+            {proyecto.maps_url && <div><a href={proyecto.maps_url} target="_blank" rel="noreferrer" className="text-blue fw-600">🧭 Cómo llegar (Maps)</a></div>}
             <div className="text-gray" style={{ marginTop: 2 }}>📅 {proyecto.fecha_agenda || 'Sin fecha'} · {proyecto.zona}</div>
             {equipoChips(proyecto).length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>

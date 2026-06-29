@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS proyectos (
   cliente           TEXT NOT NULL,
   telefono          TEXT,
   direccion         TEXT,
+  maps_url          TEXT,            -- link de Google Maps a la ubicación
   zona              TEXT CHECK (zona IN ('MTY', 'SLT', 'TRC', 'MVA')),
   cuadrilla_id      UUID REFERENCES cuadrillas(id),
   instalador_id     UUID REFERENCES usuarios(id),

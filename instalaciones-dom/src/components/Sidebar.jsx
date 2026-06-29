@@ -1,7 +1,17 @@
+import { useState } from 'react';
 import Icon from './Icon';
 
-export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vistasPermitidas, open, onClose }) {
+const MODULOS = [
+  { id: 'mesa',          label: 'Mesa de Control',          disponible: true },
+  { id: 'instalaciones', label: 'Instalaciones Domésticas', disponible: true },
+  { id: 'cfe',           label: 'CFE / Gestoría',           disponible: false },
+  { id: 'soporte',       label: 'Soporte Técnico',          disponible: false },
+  { id: 'portal',        label: 'Portal Cliente',           disponible: false },
+];
+
+export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vistasPermitidas, modulo, setModulo, open, onClose }) {
   const esInstalador = rol === 'instalador';
+  const [modOpen, setModOpen] = useState(false);
   const navItems = [
     { id: 'agenda',      icon: 'calendar',   label: 'Agenda / SLA',       section: 'Instalaciones' },
     { id: 'reagendados', icon: 'refresh',    label: 'Reagendados',         section: null },
@@ -13,8 +23,9 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
   ].filter(i => !vistasPermitidas || vistasPermitidas.includes(i.id));
 
   const handleNav = (id) => {
+    setModulo?.('instalaciones');   // las vistas del nav viven en el módulo de instalaciones
     setVista(id);
-    onClose?.();           // cierra el drawer en móvil al elegir vista
+    onClose?.();                     // cierra el drawer en móvil al elegir vista
   };
 
   return (
@@ -34,12 +45,35 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
           </button>
         </div>
 
+        {!esInstalador && (
+          <div className="mod-switcher">
+            <button className="mod-current" onClick={() => setModOpen(o => !o)}>
+              <div style={{ textAlign: 'left', minWidth: 0 }}>
+                <div className="mod-label-sm">Módulo</div>
+                <div className="mod-name">{MODULOS.find(m => m.id === modulo)?.label || 'Instalaciones Domésticas'}</div>
+              </div>
+              <span className={`mod-chevron${modOpen ? ' open' : ''}`}>▾</span>
+            </button>
+            {modOpen && (
+              <div className="mod-list">
+                {MODULOS.map(m => (
+                  <button key={m.id} className={`mod-item${m.id === modulo ? ' active' : ''}`} disabled={!m.disponible}
+                    onClick={() => { if (m.disponible) { setModulo?.(m.id); setModOpen(false); onClose?.(); } }}>
+                    <span>{m.label}</span>
+                    {m.id === modulo ? <span className="mod-check">✓</span> : (!m.disponible && <span className="mod-tag">Pronto</span>)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <nav className="sidebar-nav">
           {navItems.map((item) => (
             <div key={item.id}>
               {item.section && <div className="nav-section-label">{item.section}</div>}
               <button
-                className={`nav-item${vista === item.id ? ' active' : ''}`}
+                className={`nav-item${vista === item.id && modulo !== 'mesa' ? ' active' : ''}`}
                 onClick={() => handleNav(item.id)}
               >
                 <span className="icon"><Icon name={item.icon} size={19} /></span>

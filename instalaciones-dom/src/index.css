@@ -83,6 +83,22 @@ body {
 .sidebar-footer-email { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 600; margin-bottom: 8px; word-break: break-word; }
 .sidebar-logout { width: 100%; background: rgba(255,255,255,0.08); border: none; color: rgba(255,255,255,0.65); font-size: 12px; padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: background .15s; }
 .sidebar-logout:hover { background: rgba(255,255,255,0.14); color: white; }
+
+/* Switcher de módulos */
+.mod-switcher { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.mod-current { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: white; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.mod-current:hover { background: rgba(255,255,255,0.1); }
+.mod-label-sm { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,0.4); }
+.mod-name { font-size: 12.5px; font-weight: 700; color: var(--ambar); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-chevron { color: rgba(255,255,255,0.6); font-size: 11px; transition: transform .15s; flex-shrink: 0; }
+.mod-chevron.open { transform: rotate(180deg); }
+.mod-list { margin-top: 6px; background: var(--azul-oscuro); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; }
+.mod-item { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: none; border: none; color: rgba(255,255,255,0.8); padding: 10px 12px; font-size: 12.5px; text-align: left; cursor: pointer; }
+.mod-item:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+.mod-item.active { color: var(--ambar); background: rgba(245,166,35,0.1); }
+.mod-item:disabled { color: rgba(255,255,255,0.32); cursor: not-allowed; }
+.mod-tag { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 8px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); text-transform: uppercase; flex-shrink: 0; }
+.mod-check { color: var(--ambar); flex-shrink: 0; }
 .nav-item .badge {
   margin-left: auto; background: var(--rojo);
   color: white; font-size: 10px; font-weight: 700;

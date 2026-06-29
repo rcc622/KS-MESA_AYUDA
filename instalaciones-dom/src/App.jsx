@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import { getUsuarioPorEmail } from './lib/api';
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
+import VistaPanel from './views/VistaPanel';
 import VistaA_Agenda from './views/VistaA_Agenda';
 import VistaC_Detalle from './views/VistaC_Detalle';
 import VistaD_Reagendados from './views/VistaD_Reagendados';
@@ -25,6 +26,7 @@ function rolLabel(rol) {
 
 export default function App() {
   const [vista, setVista] = useState('agenda');
+  const [modulo, setModulo] = useState('instalaciones');
   const [navOpen, setNavOpen] = useState(false);
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [session, setSession] = useState(null);
@@ -136,6 +138,7 @@ export default function App() {
   const props = { setVista, setProyectoSeleccionado, usuarioActual };
 
   const renderVista = () => {
+    if (modulo === 'mesa') return <VistaPanel goTo={(v) => { setModulo('instalaciones'); setVista(v); }} />;
     switch (vista) {
       case 'agenda':      return <VistaA_Agenda      {...props} />;
       case 'detalle':     return <VistaC_Detalle      {...props} proyecto={proyectoSeleccionado} />;
@@ -157,6 +160,8 @@ export default function App() {
         usuario={session.user}
         rol={usuarioActual?.rol}
         vistasPermitidas={vistasPorRol(usuarioActual?.rol)}
+        modulo={modulo}
+        setModulo={setModulo}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />

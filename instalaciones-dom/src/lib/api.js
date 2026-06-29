@@ -1,5 +1,21 @@
 import { supabase } from './supabase';
 
+// ── CONTROL DE ACCESO ─────────────────────────────────────────
+// El usuario actual se registra desde App.jsx al hacer login.
+// Las funciones sensibles llaman a requireRol() antes de tocar Supabase.
+let _currentUser = null;
+
+export function setCurrentUser(usuario) {
+  _currentUser = usuario;
+}
+
+function requireRol(...rolesPermitidos) {
+  const rol = _currentUser?.rol;
+  if (!rol || !rolesPermitidos.includes(rol)) {
+    throw new Error('No tienes permiso para esta acción.');
+  }
+}
+
 // ── RESPALDO GENERAL ──────────────────────────────────────────
 // Tablas a respaldar (se amplía conforme se agreguen módulos).
 const TABLAS_RESPALDO = [
@@ -10,6 +26,7 @@ const TABLAS_RESPALDO = [
 // Descarga toda la data de cada tabla en un objeto. Errores por tabla no
 // abortan el respaldo (se listan aparte).
 export async function respaldoGeneral() {
+  requireRol('admin');
   const tablas = {};
   const errores = [];
   for (const t of TABLAS_RESPALDO) {
@@ -62,6 +79,7 @@ export async function getProyecto(id) {
 }
 
 export async function crearProyecto(payload) {
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('proyectos').insert(payload).select().single();
   if (error) throw error;
   return data;
@@ -119,12 +137,14 @@ export async function getCuadrillas({ zona, activa } = {}) {
 }
 
 export async function crearCuadrilla(payload) {
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('cuadrillas').insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function actualizarCuadrilla(id, payload) {
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('cuadrillas').update(payload).eq('id', id).select().single();
   if (error) throw error;
   return data;
@@ -132,12 +152,14 @@ export async function actualizarCuadrilla(id, payload) {
 
 // ── REGLAS KPI ───────────────────────────────────────────────
 export async function crearRegla(payload) {
+  requireRol('admin');
   const { data, error } = await supabase.from('reglas_cuadrilla').insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function eliminarRegla(id) {
+  requireRol('admin');
   const { error } = await supabase.from('reglas_cuadrilla').delete().eq('id', id);
   if (error) throw error;
 }
@@ -153,18 +175,21 @@ export async function getUsuarios({ rol, zona } = {}) {
 }
 
 export async function getTodosUsuarios() {
+  requireRol('admin');
   const { data, error } = await supabase.from('usuarios').select('*').order('nombre');
   if (error) throw error;
   return data;
 }
 
 export async function crearUsuarioPerfil(payload) {
+  requireRol('admin');
   const { data, error } = await supabase.from('usuarios').insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function actualizarUsuarioPerfil(id, payload) {
+  requireRol('admin');
   const { data, error } = await supabase.from('usuarios').update(payload).eq('id', id).select().single();
   if (error) throw error;
   return data;
@@ -208,12 +233,14 @@ export async function getCortes({ semana_inicio } = {}) {
 }
 
 export async function actualizarCorte(id, payload) {
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('cortes_pago').update(payload).eq('id', id).select().single();
   if (error) throw error;
   return data;
 }
 
 export async function agregarVuelta({ corte_id, concepto, monto }) {
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('vueltas').insert({ corte_id, concepto, monto }).select().single();
   if (error) throw error;
   return data;
@@ -221,7 +248,7 @@ export async function agregarVuelta({ corte_id, concepto, monto }) {
 
 // ── IMPORTACIÓN ──────────────────────────────────────────────
 export async function upsertProyectos(rows) {
-  // upsert por folio_odoo
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase
     .from('proyectos')
     .upsert(rows, { onConflict: 'folio_odoo', ignoreDuplicates: false })

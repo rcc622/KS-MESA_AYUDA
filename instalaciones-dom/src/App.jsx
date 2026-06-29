@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './index.css';
 import { supabase } from './lib/supabase';
-import { getUsuarioPorEmail } from './lib/api';
+import { getUsuarioPorEmail, setCurrentUser } from './lib/api';
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import VistaPanel from './views/VistaPanel';
@@ -63,11 +63,20 @@ export default function App() {
   // Mapea el usuario de Auth a su fila en `usuarios` (por email) para que la
   // bitácora guarde un usuario_id válido (o null si no está en la tabla).
   useEffect(() => {
-    if (!session?.user?.email) { setUsuarioActual(null); return; }
+    if (!session?.user?.email) { setUsuarioActual(null); setCurrentUser(null); return; }
     let cancelado = false;
     getUsuarioPorEmail(session.user.email)
-      .then(u => { if (!cancelado) setUsuarioActual({ id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null }); })
-      .catch(() => { if (!cancelado) setUsuarioActual({ id: null, email: session.user.email }); });
+      .then(u => {
+        if (cancelado) return;
+        const usuario = { id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null };
+        setUsuarioActual(usuario);
+        setCurrentUser(usuario);
+      })
+      .catch(() => {
+        if (cancelado) return;
+        setUsuarioActual({ id: null, email: session.user.email });
+        setCurrentUser(null);
+      });
     return () => { cancelado = true; };
   }, [session]);
 

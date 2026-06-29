@@ -391,6 +391,11 @@ textarea { resize: vertical; min-height: 80px; }
 .w-full { width: 100%; }
 .divider { border: none; border-top: 1px solid var(--borde); margin: 12px 0; }
 .firma-canvas { width: 100%; height: 170px; border: 2px dashed var(--borde); border-radius: 10px; background: white; touch-action: none; display: block; cursor: crosshair; }
+/* Archivo / historial */
+.archivo-mes { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: none; border: none; cursor: pointer; font-size: 14px; color: var(--azul-primario); }
+.archivo-semana { padding: 0 12px 8px; }
+.archivo-semana-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gris-secundario); padding: 8px 4px 6px; }
+.archivo-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 8px; margin-bottom: 8px; background: white; }
 .empty-state { text-align: center; padding: 48px 20px; color: var(--gris-secundario); }
 .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 13px; }

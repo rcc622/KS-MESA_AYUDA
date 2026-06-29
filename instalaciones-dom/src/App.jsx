@@ -5,6 +5,7 @@ import { getUsuarioPorEmail } from './lib/api';
 import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import VistaPanel from './views/VistaPanel';
+import VistaArchivo from './views/VistaArchivo';
 import VistaA_Agenda from './views/VistaA_Agenda';
 import VistaC_Detalle from './views/VistaC_Detalle';
 import VistaD_Reagendados from './views/VistaD_Reagendados';
@@ -16,9 +17,9 @@ import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 // Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
 // de campo; los demás roles ven la plataforma completa.
 function vistasPorRol(rol) {
-  if (rol === 'instalador') return ['reporte'];   // solo su módulo de campo
+  if (rol === 'instalador') return ['reporte', 'archivo'];   // su módulo de campo + su historial
   // admin / pm_domestico / coordinador: todo MENOS el reporte de campo (lo llena el instalador)
-  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas'];
+  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo'];
 }
 function rolLabel(rol) {
   return ({ admin: 'Admin', pm_domestico: 'PM', coordinador: 'Coordinador', instalador: 'Instalador' })[rol] || 'Usuario';
@@ -145,6 +146,7 @@ export default function App() {
       case 'reagendados': return <VistaD_Reagendados  {...props} />;
       case 'import':      return <VistaE_Import        {...props} />;
       case 'reporte':     return <VistaF_Reporte       {...props} />;
+      case 'archivo':     return <VistaArchivo         {...props} />;
       case 'cortes':      return <VistaI_Cortes />;
       case 'cuadrillas':  return <VistaL_Cuadrillas />;
       default: return null;

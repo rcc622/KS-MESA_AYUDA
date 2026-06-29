@@ -227,7 +227,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
           <div className="sub">{proyecto.cliente}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <EstatusBadge estatus={proyecto.estatus} />
+          <EstatusBadge estatus={proyecto.estatus} fecha={fechaMostrada} />
           <button className="btn btn-outline btn-sm" onClick={() => setModalNota(true)}>+ Agregar nota</button>
         </div>
       </div>

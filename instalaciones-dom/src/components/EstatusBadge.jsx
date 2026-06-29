@@ -6,8 +6,10 @@ const ESTATUS_CONFIG = {
   cancelado:   { label: 'Cancelado',   color: '#D64545', bg: '#FDF0F0' },
 };
 
-export default function EstatusBadge({ estatus }) {
-  const cfg = ESTATUS_CONFIG[estatus] || { label: estatus, color: '#6B7280', bg: '#F3F4F6' };
+export default function EstatusBadge({ estatus, fecha }) {
+  let cfg = ESTATUS_CONFIG[estatus] || { label: estatus, color: '#6B7280', bg: '#F3F4F6' };
+  // Agendado sin fecha confirmada => "Por agendar" (solo display, el estatus en BD sigue 'agendado')
+  if (estatus === 'agendado' && !fecha) cfg = { label: 'Por agendar', color: '#92400E', bg: '#FEF3C7' };
   return (
     <span className="badge" style={{ color: cfg.color, background: cfg.bg }}>
       {cfg.label}

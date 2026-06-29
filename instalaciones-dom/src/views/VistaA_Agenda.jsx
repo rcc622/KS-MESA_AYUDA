@@ -182,7 +182,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
                   </td>
                   <td style={{ fontSize: 12 }}>{p.fecha_agenda || '—'}</td>
                   <td><SLABadge dias={p.dias_en_etapa} /></td>
-                  <td><EstatusBadge estatus={p.estatus} /></td>
+                  <td><EstatusBadge estatus={p.estatus} fecha={p.fecha_agenda} /></td>
                   <td>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span style={{ fontSize: 10, color: p.anticipo_pagado ? '#16A34A' : '#D64545' }}>{p.anticipo_pagado ? '✅' : '⭕'} Anticipo</span>

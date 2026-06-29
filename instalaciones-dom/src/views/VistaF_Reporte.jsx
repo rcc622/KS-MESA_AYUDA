@@ -159,7 +159,7 @@ export default function VistaF_Reporte({ usuarioActual }) {
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                           <SLABadge dias={p.dias_en_etapa} />
-                          <EstatusBadge estatus={p.estatus} />
+                          <EstatusBadge estatus={p.estatus} fecha={p.fecha_agenda} />
                         </div>
                       </div>
                       {p.direccion && <div className="text-sm text-gray" style={{ marginBottom: 8 }}>📍 {p.direccion}</div>}

@@ -396,6 +396,12 @@ textarea { resize: vertical; min-height: 80px; }
 .archivo-semana { padding: 0 12px 8px; }
 .archivo-semana-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gris-secundario); padding: 8px 4px 6px; }
 .archivo-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 8px; margin-bottom: 8px; background: white; }
+/* Log de movimientos */
+.log-dia { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--gris-secundario); padding: 10px 2px 6px; position: sticky; top: 0; }
+.log-item { display: flex; gap: 10px; padding: 10px 12px; background: white; border: 1px solid var(--borde); border-radius: 8px; margin-bottom: 8px; }
+.log-dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.log-meta { font-size: 11px; color: var(--gris-secundario); margin-bottom: 3px; }
+.log-desc { font-size: 13px; color: var(--gris-texto); }
 .empty-state { text-align: center; padding: 48px 20px; color: var(--gris-secundario); }
 .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 13px; }

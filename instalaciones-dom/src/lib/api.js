@@ -84,6 +84,17 @@ export async function getBitacora(proyecto_id) {
   return data;
 }
 
+// Log global: todos los movimientos de todos los proyectos (con proyecto + usuario).
+export async function getBitacoraGlobal({ limite = 500 } = {}) {
+  const { data, error } = await supabase
+    .from('bitacora')
+    .select('*, usuario:usuarios(id,nombre), proyecto:proyectos(folio,cliente,zona)')
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw error;
+  return data;
+}
+
 export async function agregarBitacora({ proyecto_id, tipo, descripcion, usuario_id }) {
   const { data, error } = await supabase
     .from('bitacora')

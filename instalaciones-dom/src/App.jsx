@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Icon from './components/Icon';
 import VistaPanel from './views/VistaPanel';
 import VistaArchivo from './views/VistaArchivo';
+import VistaLog from './views/VistaLog';
 import VistaA_Agenda from './views/VistaA_Agenda';
 import VistaC_Detalle from './views/VistaC_Detalle';
 import VistaD_Reagendados from './views/VistaD_Reagendados';
@@ -19,7 +20,7 @@ import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 function vistasPorRol(rol) {
   if (rol === 'instalador') return ['reporte', 'archivo'];   // su módulo de campo + su historial
   // admin / pm_domestico / coordinador: todo MENOS el reporte de campo (lo llena el instalador)
-  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo'];
+  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos'];
 }
 function rolLabel(rol) {
   return ({ admin: 'Admin', pm_domestico: 'PM', coordinador: 'Coordinador', instalador: 'Instalador' })[rol] || 'Usuario';
@@ -147,6 +148,7 @@ export default function App() {
       case 'import':      return <VistaE_Import        {...props} />;
       case 'reporte':     return <VistaF_Reporte       {...props} />;
       case 'archivo':     return <VistaArchivo         {...props} />;
+      case 'movimientos': return <VistaLog />;
       case 'cortes':      return <VistaI_Cortes />;
       case 'cuadrillas':  return <VistaL_Cuadrillas />;
       default: return null;

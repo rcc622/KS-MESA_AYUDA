@@ -19,6 +19,7 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
     { id: 'reporte',     icon: 'smartphone', label: esInstalador ? 'Mis instalaciones' : 'Reporte Instalador',  section: esInstalador ? 'Campo' : null },
     { id: 'archivo',     icon: 'archive',    label: esInstalador ? 'Historial' : 'Archivo',  section: esInstalador ? null : 'Histórico' },
     { id: 'movimientos', icon: 'clipboard',  label: 'Movimientos (log)',   section: null },
+    { id: 'asistente',   icon: 'message',    label: 'Asistente IA',        section: esInstalador ? 'IA' : 'Inteligencia' },
     { id: 'import',      icon: 'upload',     label: 'Importar Proyectos',  section: 'Datos' },
     { id: 'cortes',      icon: 'dollar',     label: 'Cortes de Pago',      section: 'Finanzas' },
     { id: 'cuadrillas',  icon: 'users',      label: 'Config. Cuadrillas',  section: 'Configuración' },

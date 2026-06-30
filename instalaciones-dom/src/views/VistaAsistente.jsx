@@ -66,6 +66,7 @@ export default function VistaAsistente({ usuarioActual }) {
           <select value={provider} onChange={e => setProvider(e.target.value)}>
             <option value="claude">Claude (preciso)</option>
             <option value="llama">Llama · Groq (rápido)</option>
+            <option value="qwen">Qwen (a prueba)</option>
           </select>
         </div>
       </div>

@@ -16,6 +16,7 @@ import VistaI_Cortes from './views/VistaI_Cortes';
 import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 import VistaG_Usuarios from './views/VistaG_Usuarios';
 import VistaAsistente from './views/VistaAsistente';
+import AsistenteFlotante from './components/AsistenteFlotante';
 
 // Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
 // de campo; los demás roles ven la plataforma completa. El Asistente IA está
@@ -200,6 +201,10 @@ export default function App() {
         </header>
         {renderVista()}
       </main>
+      <AsistenteFlotante
+        usuarioActual={usuarioActual}
+        oculto={modulo !== 'mesa' && vista === 'asistente'}
+      />
     </div>
   );
 }

@@ -30,6 +30,13 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 # Para usar Llama vía Groq (opcional, rápido y barato). Saca una llave gratis en
 # https://console.groq.com → API Keys
 supabase secrets set GROQ_API_KEY=gsk_...
+
+# Para usar Qwen (opcional, a prueba). Por defecto usa Together.ai. Saca una llave en
+# https://api.together.xyz → Settings → API Keys (da crédito gratis al registrarte)
+supabase secrets set QWEN_API_KEY=...
+# (opcional) cambiar de proveedor/modelo de Qwen sin tocar código:
+#   supabase secrets set QWEN_BASE_URL=https://openrouter.ai/api/v1
+#   supabase secrets set QWEN_MODEL=qwen/qwen-2.5-72b-instruct
 ```
 `SUPABASE_URL` y `SUPABASE_ANON_KEY` ya los inyecta Supabase; no los pongas tú.
 

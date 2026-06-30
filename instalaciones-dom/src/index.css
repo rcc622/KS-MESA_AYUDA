@@ -516,3 +516,52 @@ textarea { resize: vertical; min-height: 80px; }
   .ia-bubble { max-width: 86%; }
   .ia-provider label { display: none; }
 }
+
+/* ── Asistente flotante (burbuja global) ──────────────────────── */
+.ia-fab {
+  position: fixed; bottom: 22px; right: 22px; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--azul-primario); color: white; border: none; cursor: pointer; z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(31,78,121,0.40); transition: transform .15s, box-shadow .15s;
+}
+.ia-fab:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 10px 24px rgba(31,78,121,0.50); }
+.ia-fab:active { transform: scale(0.96); }
+
+.ia-pop {
+  position: fixed; bottom: 22px; right: 22px; z-index: 300;
+  width: 374px; max-width: calc(100vw - 32px);
+  height: 560px; max-height: calc(100dvh - 110px);
+  background: white; border: 1px solid var(--borde); border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.28); display: flex; flex-direction: column; overflow: hidden;
+  animation: ia-pop-in .16s ease-out;
+}
+@keyframes ia-pop-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+
+.ia-pop-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px 14px; background: var(--azul-primario); color: white; flex-shrink: 0;
+}
+.ia-pop-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+.ia-pop-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 3px rgba(46,158,91,0.30); }
+.ia-pop-actions { display: flex; align-items: center; gap: 6px; }
+.ia-pop-actions select {
+  background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px; font-size: 12px; padding: 4px 6px; cursor: pointer;
+}
+.ia-pop-actions select option { color: var(--gris-texto); }
+.ia-pop-close { background: transparent; border: none; color: white; cursor: pointer; display: flex; padding: 2px; opacity: .85; }
+.ia-pop-close:hover { opacity: 1; }
+
+.ia-pop-chat { padding: 14px; }
+.ia-welcome-sm { margin: 8px auto; }
+.ia-welcome-sm .ia-welcome-emoji { font-size: 26px; }
+.ia-pop .ia-input-bar { padding: 10px 12px; }
+.ia-pop .ia-bubble { max-width: 88%; font-size: 13.5px; }
+
+@media (max-width: 768px) {
+  .ia-fab { bottom: 16px; right: 16px; width: 52px; height: 52px; }
+  .ia-pop {
+    bottom: 0; right: 0; left: 0; top: auto; width: 100%; max-width: 100%;
+    height: 82dvh; max-height: 82dvh; border-radius: 16px 16px 0 0;
+  }
+}

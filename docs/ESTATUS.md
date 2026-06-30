@@ -10,6 +10,30 @@
 
 ---
 
+## 2026-06-30 (tarde) · Randall + Claude · 3er motor Qwen + recuperación de la burbuja flotante
+
+Agregamos **Qwen** como tercer motor del asistente (para comparar Llama vs Qwen vs Claude)
+y **recuperamos la burbuja flotante**, que un reset del entorno había revertido antes de
+commitearse en la sesión anterior (la vista completa del Asistente sí estaba bien).
+
+**Qué se movió:**
+- Backend `ia`: el runner compatible con OpenAI ahora es genérico (`correrOpenAICompat`)
+  y sirve para **Llama (Groq)** y **Qwen**. Qwen por defecto usa Together.ai; el host y
+  el modelo se cambian con secretos `QWEN_BASE_URL` / `QWEN_MODEL` (sin tocar código).
+- Front: opción **Qwen** en el selector de motor (vista completa y burbuja).
+- **Burbuja flotante** (`AsistenteFlotante.jsx`) recreada y montada global en `App.jsx`;
+  CSS `.ia-fab`/`.ia-pop` re-agregado. Esta vez **verificado en git**.
+- Hook SessionStart quedó **síncrono** (decisión de Randall).
+
+**Pendiente / cómo probar:**
+- Poner `QWEN_API_KEY` en Supabase Secrets (llave de Together.ai) y **redeplegar `ia`**.
+- También falta `ANTHROPIC_API_KEY` (Claude) — opcional.
+- Probar: burbuja 💬 → selector **Qwen** → *"¿cómo vamos en general?"*. Comparar con Llama.
+- ⚠️ La función `ia` **debe redeplegarse** para tomar Qwen y el manejo de rate limit
+  (si se desplegó pegando código en el dashboard, volver a pegar el `index.ts` actualizado).
+
+---
+
 ## 2026-06-30 · Randall + Claude · IA Fase 1: Asistente con datos reales + burbuja flotante
 
 Arrancamos la Fase 1 del roadmap de IA: la plataforma ya tiene un **asistente que

@@ -27,8 +27,17 @@ const CORS = {
 };
 
 const CLAUDE_MODEL = 'claude-opus-4-8';
-const LLAMA_MODEL = 'llama-3.3-70b-versatile'; // Llama 3.3 70B hospedado en Groq
 const MAX_ITERACIONES = 6; // tope del loop de tool use (anti-bucle infinito)
+
+// ── Motores compatibles con OpenAI (Llama y Qwen) ────────────────────────────
+// Llama vía Groq:
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const LLAMA_MODEL = 'llama-3.3-70b-versatile';
+// Qwen vía proveedor compatible con OpenAI (por defecto Together.ai). El host y el
+// modelo se pueden cambiar con secretos QWEN_BASE_URL / QWEN_MODEL sin tocar el código
+// (ej. para usar OpenRouter o DashScope de Alibaba).
+const QWEN_URL = (Deno.env.get('QWEN_BASE_URL') || 'https://api.together.xyz/v1') + '/chat/completions';
+const QWEN_MODEL = Deno.env.get('QWEN_MODEL') || 'Qwen/Qwen2.5-72B-Instruct-Turbo';
 
 // ── HERRAMIENTAS (esquema neutral, se traduce a cada proveedor) ──────────────
 // Todas son SOLO LECTURA en esta v1. Corren con el cliente Supabase del usuario,
@@ -228,8 +237,12 @@ async function correrClaude(supabase: any, historial: any[], system: string, api
   return { reply: 'No pude completar la consulta (demasiados pasos).', usadas, provider: 'claude' };
 }
 
-// ── PROVEEDOR: LLAMA vía Groq (API compatible con OpenAI) ────────────────────
-async function correrLlama(supabase: any, historial: any[], system: string, apiKey: string) {
+// ── PROVEEDORES compatibles con OpenAI (Llama/Groq y Qwen) ───────────────────
+// Un solo runner sirve para cualquier API estilo OpenAI: solo cambian url, modelo y key.
+async function correrOpenAICompat(
+  supabase: any, historial: any[], system: string,
+  apiKey: string, url: string, model: string, etiqueta: string,
+) {
   const tools = TOOLS.map(t => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.schema },
@@ -238,25 +251,25 @@ async function correrLlama(supabase: any, historial: any[], system: string, apiK
   const usadas: string[] = [];
 
   for (let i = 0; i < MAX_ITERACIONES; i++) {
-    const payload = JSON.stringify({ model: LLAMA_MODEL, messages, tools, tool_choice: 'auto', temperature: 0.3 });
+    const payload = JSON.stringify({ model, messages, tools, tool_choice: 'auto', temperature: 0.3 });
     const opts = { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: payload };
-    let resp = await fetch('https://api.groq.com/openai/v1/chat/completions', opts);
-    // Plan gratis de Groq: 12k tokens/min. Si topa, espera lo sugerido y reintenta UNA vez.
+    let resp = await fetch(url, opts);
+    // Límite por minuto (planes gratis): si topa, espera lo sugerido y reintenta UNA vez.
     if (resp.status === 429) {
       const ra = parseFloat(resp.headers.get('retry-after') || '0');
       await new Promise(r => setTimeout(r, Math.min((ra > 0 ? ra : 8), 12) * 1000));
-      resp = await fetch('https://api.groq.com/openai/v1/chat/completions', opts);
+      resp = await fetch(url, opts);
     }
     if (resp.status === 429) {
-      throw new Error('El motor Llama (plan gratis de Groq) llegó a su límite por minuto. Espera ~30 segundos y reintenta, o cambia el motor a "Claude" para uso más pesado.');
+      throw new Error(`El motor ${etiqueta} llegó a su límite por minuto (plan gratis). Espera ~30 segundos y reintenta, o cambia de motor.`);
     }
     if (!resp.ok) {
       const txt = await resp.text();
-      throw new Error(`Groq ${resp.status}: ${txt}`);
+      throw new Error(`${etiqueta} ${resp.status}: ${txt}`);
     }
     const data = await resp.json();
     const msg = data.choices?.[0]?.message;
-    if (!msg) throw new Error('Groq: respuesta vacía');
+    if (!msg) throw new Error(`${etiqueta}: respuesta vacía`);
 
     if (msg.tool_calls?.length) {
       messages.push(msg); // turno del asistente con los tool_calls
@@ -270,9 +283,9 @@ async function correrLlama(supabase: any, historial: any[], system: string, apiK
       continue;
     }
 
-    return { reply: (msg.content || '(sin respuesta)').trim(), usadas, provider: 'llama' };
+    return { reply: (msg.content || '(sin respuesta)').trim(), usadas, provider: etiqueta };
   }
-  return { reply: 'No pude completar la consulta (demasiados pasos).', usadas, provider: 'llama' };
+  return { reply: 'No pude completar la consulta (demasiados pasos).', usadas, provider: etiqueta };
 }
 
 // ── HANDLER ──────────────────────────────────────────────────────────────────
@@ -298,7 +311,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const provider = body?.provider === 'llama' ? 'llama' : 'claude';
+    const provider = ['llama', 'qwen'].includes(body?.provider) ? body.provider : 'claude';
     const historial = Array.isArray(body?.messages) ? body.messages : [];
     // Sanea el historial: solo roles válidos y contenido string.
     const limpio = historial
@@ -315,7 +328,11 @@ Deno.serve(async (req) => {
     if (provider === 'llama') {
       const key = Deno.env.get('GROQ_API_KEY');
       if (!key) throw new Error('Falta el secreto GROQ_API_KEY en Supabase (para usar Llama).');
-      salida = await correrLlama(supabase, limpio, system, key);
+      salida = await correrOpenAICompat(supabase, limpio, system, key, GROQ_URL, LLAMA_MODEL, 'llama');
+    } else if (provider === 'qwen') {
+      const key = Deno.env.get('QWEN_API_KEY');
+      if (!key) throw new Error('Falta el secreto QWEN_API_KEY en Supabase (para usar Qwen).');
+      salida = await correrOpenAICompat(supabase, limpio, system, key, QWEN_URL, QWEN_MODEL, 'qwen');
     } else {
       const key = Deno.env.get('ANTHROPIC_API_KEY');
       if (!key) throw new Error('Falta el secreto ANTHROPIC_API_KEY en Supabase (para usar Claude).');

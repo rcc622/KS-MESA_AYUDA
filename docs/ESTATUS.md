@@ -10,6 +10,27 @@
 
 ---
 
+## 2026-06-30 · Pablo + Claude · ✅ Integración Google Calendar para instaladores
+
+Se construyó e integró el flujo completo de Google Calendar OAuth. Cuando un PM o admin agenda una instalación con cuadrilla asignada, el evento aparece automáticamente en el Google Calendar del responsable de esa cuadrilla, sin que el instalador tenga que entrar a la plataforma.
+
+**Qué se construyó:**
+- `sql/migracion_gcal.sql`: dos columnas nuevas — `google_refresh_token` en `usuarios` y `gcal_event_id` en `proyectos`.
+- Edge Function `gcal-auth`: maneja el flujo OAuth 2.0 con Google. El instalador conecta su cuenta una sola vez desde "Mis instalaciones" → botón 📅 Conectar Google Calendar.
+- Edge Function `gcal-event`: crea, actualiza o elimina el evento en Google Calendar del responsable de la cuadrilla usando el refresh_token almacenado.
+- `src/lib/gcal.js`: helpers del front para llamar a las Edge Functions.
+- `VistaC_Detalle`: dispara sincronización al agendar, reagendar, cambiar cuadrilla y cancelar proyecto.
+- `VistaA_Agenda`: dispara sincronización al crear proyecto nuevo con fecha y cuadrilla desde el modal "+ Agendar instalación".
+
+**Estado:** probado y funcionando en producción. El refresh_token de Pablo ya está guardado y los eventos se crean correctamente.
+
+**Pendiente / para Randall:**
+- Cada instalador real debe conectar su Google Calendar una sola vez (botón 📅 en "Mis instalaciones").
+- Agregar los emails de los instaladores como "test users" en Google Cloud Console (mientras la app esté en modo Testing).
+- Respaldo previo: `backup/main-2026-06-30-gcal`.
+
+---
+
 ## 2026-07-01 · Randall + Claude · ✅ Fase 2 y Fase 3 ACTIVADAS
 
 Randall corrió los 2 pasos: **redeploy de la función `ia`** (Fase 2) y

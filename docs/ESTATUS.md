@@ -10,6 +10,31 @@
 
 ---
 
+## 2026-06-30 (cierre) · Randall + Claude · ✅ Asistente IA en vivo (Llama + Qwen)
+
+Cierre del día. La función `ia` **ya está desplegada y funcionando** con los dos motores
+en Groq: **Llama** y **Qwen** (Claude quedó fuera para no usar la cuenta personal). El
+asistente lee datos reales y la burbuja flotante está en todas las pantallas.
+
+**Cómo quedó (todo en `main`, verificado):**
+- Asistente con datos reales (tool use de solo lectura) + burbuja flotante global.
+- 2 motores comparables en el selector: **Llama** y **Qwen** (una sola `GROQ_API_KEY`).
+- Manejo amable de rate limit (Groq plan gratis: 12k tokens/min).
+- Protocolo de trabajo (`CLAUDE.md`), bitácora (este archivo), guía de devs
+  (`docs/GUIA_DEV.md`) y **SessionStart hook** (imprime el estatus al iniciar).
+- Respaldos del día: `backup/main-2026-06-30` y `backup/main-2026-06-30-qwen`.
+
+**Qué falta / próximos pasos:**
+- **Testear Llama vs Qwen** en uso real y decidir cuál conviene para cada cosa.
+- **Fase 2:** importación inteligente ("Formatear con IA" para Excels sucios).
+- **Fase 3:** chat del cliente + Portal Cliente con login y RLS estricto.
+- Opcional/cimiento móvil: convertir el front en **PWA**; a futuro app nativa (Capacitor).
+- Roadmap negocio: alerta **CFE → Cobranza** (medidor bidireccional) + API **TOKU**.
+- Menor: rotar `GROQ_API_KEY` si quedó expuesta en capturas; warnings de lint no críticos.
+- El reporte del instalador tiene áreas de mejora (Randall las irá marcando al testear).
+
+---
+
 ## 2026-06-30 (noche) · Randall + Claude · Quitamos Claude de la plataforma + fix de hooks
 
 Por decisión de Randall (no gastar/contaminar su cuenta personal de Claude), **sacamos

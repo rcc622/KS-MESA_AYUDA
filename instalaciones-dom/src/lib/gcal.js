@@ -16,7 +16,7 @@ export async function conectarGoogleCalendar(userId) {
   if (!json.url) throw new Error(json.error || 'No se pudo obtener la URL de autorización.');
 
   // Abre la autorización de Google en una ventana pequeña
-  window.open(json.url, 'google-oauth', 'width=500,height=650,left=200,top=100');
+  return window.open(json.url, 'google-oauth', 'width=500,height=650,left=200,top=100');
 }
 
 // Llama a la Edge Function gcal-event para crear, actualizar o eliminar

@@ -66,13 +66,25 @@ export default function App() {
 
   // Mapea el usuario de Auth a su fila en `usuarios` (por email) para que la
   // bitácora guarde un usuario_id válido (o null si no está en la tabla).
+  const refrescarUsuarioActual = async () => {
+    if (!session?.user?.email) return;
+    try {
+      const u = await getUsuarioPorEmail(session.user.email);
+      const usuario = { id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null, google_refresh_token: u?.google_refresh_token ?? null };
+      setUsuarioActual(usuario);
+      setCurrentUser(usuario);
+    } catch {
+      // si falla el refresh, se conserva el usuarioActual previo
+    }
+  };
+
   useEffect(() => {
     if (!session?.user?.email) { setUsuarioActual(null); setCurrentUser(null); return; }
     let cancelado = false;
     getUsuarioPorEmail(session.user.email)
       .then(u => {
         if (cancelado) return;
-        const usuario = { id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null };
+        const usuario = { id: u?.id ?? null, email: session.user.email, nombre: u?.nombre ?? null, rol: u?.rol ?? null, google_refresh_token: u?.google_refresh_token ?? null };
         setUsuarioActual(usuario);
         setCurrentUser(usuario);
       })
@@ -151,7 +163,7 @@ export default function App() {
     );
   }
 
-  const props = { setVista, setProyectoSeleccionado, usuarioActual };
+  const props = { setVista, setProyectoSeleccionado, usuarioActual, refrescarUsuarioActual };
 
   const renderVista = () => {
     if (modulo === 'mesa') return <VistaPanel goTo={(v) => { setModulo('instalaciones'); setVista(v); }} usuarioActual={usuarioActual} />;

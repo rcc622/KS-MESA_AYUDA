@@ -45,7 +45,7 @@ function dataURLtoBlob(dataUrl) {
   return new Blob([arr], { type: mime });
 }
 
-export default function VistaF_Reporte({ usuarioActual }) {
+export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }) {
   const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [proyectoId, setProyectoId] = useState('');   // '' = vista de lista
@@ -58,9 +58,29 @@ export default function VistaF_Reporte({ usuarioActual }) {
   const [enviado, setEnviado] = useState(false);
   const [respaldoEv, setRespaldoEv] = useState('');
   const [etapaActiva, setEtapaActiva] = useState('checklist');
+  const [conectandoCal, setConectandoCal] = useState(false);
 
   const esInstalador = usuarioActual?.rol === 'instalador';
   const titulo = esInstalador ? 'Mis instalaciones' : 'Reporte Instalador';
+  const calConectado = !!usuarioActual?.google_refresh_token;
+
+  const handleConectarCalendar = async () => {
+    setConectandoCal(true);
+    try {
+      const popup = await conectarGoogleCalendar(usuarioActual.id);
+      // Detecta cuándo se cierra la ventana de autorización para refrescar el estado
+      const checarCierre = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(checarCierre);
+          setConectandoCal(false);
+          refrescarUsuarioActual?.();
+        }
+      }, 700);
+    } catch (e) {
+      setConectandoCal(false);
+      alert('No se pudo abrir la autorización de Google: ' + e.message);
+    }
+  };
 
   const cargar = useCallback(async () => {
     if (usuarioActual == null) return;
@@ -241,20 +261,25 @@ export default function VistaF_Reporte({ usuarioActual }) {
           <div><h2>{titulo}</h2><div className="sub">{proyectos.length} {proyectos.length === 1 ? 'instalación' : 'instalaciones'} por atender</div></div>
           <div style={{ display: 'flex', gap: 8 }}>
             {esInstalador && (
-              <button
-                className="btn btn-outline btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={async () => {
-                  try {
-                    await conectarGoogleCalendar(usuarioActual.id);
-                  } catch (e) {
-                    alert('No se pudo abrir la autorización de Google: ' + e.message);
-                  }
-                }}
-                title="Conecta tu Google Calendar para recibir tus instalaciones automáticamente"
-              >
-                📅 Conectar Google Calendar
-              </button>
+              calConectado ? (
+                <span
+                  className="badge"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0FBF4', color: '#16A34A', border: '1px solid #BBF7D0', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}
+                  title="Tus instalaciones agendadas se sincronizan automáticamente a tu Google Calendar"
+                >
+                  ✅ Calendar conectado
+                </span>
+              ) : (
+                <button
+                  className="btn btn-outline btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  onClick={handleConectarCalendar}
+                  disabled={conectandoCal}
+                  title="Conecta tu Google Calendar para recibir tus instalaciones automáticamente"
+                >
+                  {conectandoCal ? '⏳ Conectando…' : '📅 Conectar Google Calendar'}
+                </button>
+              )
             )}
             <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
           </div>

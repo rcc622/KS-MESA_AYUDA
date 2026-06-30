@@ -189,6 +189,9 @@ async function correrClaude(supabase: any, historial: any[], system: string, api
         tools,
       }),
     });
+    if (resp.status === 429 || resp.status === 529) {
+      throw new Error('El motor Claude está saturado o llegó a su límite. Espera unos segundos y reintenta, o cambia el motor a "Llama".');
+    }
     if (!resp.ok) {
       const txt = await resp.text();
       throw new Error(`Anthropic ${resp.status}: ${txt}`);
@@ -235,11 +238,18 @@ async function correrLlama(supabase: any, historial: any[], system: string, apiK
   const usadas: string[] = [];
 
   for (let i = 0; i < MAX_ITERACIONES; i++) {
-    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ model: LLAMA_MODEL, messages, tools, tool_choice: 'auto', temperature: 0.3 }),
-    });
+    const payload = JSON.stringify({ model: LLAMA_MODEL, messages, tools, tool_choice: 'auto', temperature: 0.3 });
+    const opts = { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: payload };
+    let resp = await fetch('https://api.groq.com/openai/v1/chat/completions', opts);
+    // Plan gratis de Groq: 12k tokens/min. Si topa, espera lo sugerido y reintenta UNA vez.
+    if (resp.status === 429) {
+      const ra = parseFloat(resp.headers.get('retry-after') || '0');
+      await new Promise(r => setTimeout(r, Math.min((ra > 0 ? ra : 8), 12) * 1000));
+      resp = await fetch('https://api.groq.com/openai/v1/chat/completions', opts);
+    }
+    if (resp.status === 429) {
+      throw new Error('El motor Llama (plan gratis de Groq) llegó a su límite por minuto. Espera ~30 segundos y reintenta, o cambia el motor a "Claude" para uso más pesado.');
+    }
     if (!resp.ok) {
       const txt = await resp.text();
       throw new Error(`Groq ${resp.status}: ${txt}`);
@@ -293,7 +303,7 @@ Deno.serve(async (req) => {
     // Sanea el historial: solo roles válidos y contenido string.
     const limpio = historial
       .filter((m: any) => (m?.role === 'user' || m?.role === 'assistant') && typeof m?.content === 'string')
-      .slice(-20); // tope de contexto
+      .slice(-12); // tope de contexto (menos historial = menos tokens/min, ayuda con el límite de Groq)
     if (!limpio.length) {
       return new Response(JSON.stringify({ error: 'Mensaje vacío.' }), { status: 400, headers: { ...CORS, 'content-type': 'application/json' } });
     }

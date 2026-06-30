@@ -10,6 +10,21 @@
 
 ---
 
+## 2026-06-30 (noche, cont. 2) · Pablo + Claude · ✅ Crear usuarios desde la plataforma (sin Supabase Auth manual)
+
+Antes, dar de alta un usuario nuevo requería dos pasos: crear el perfil en "Gestión de Usuarios" y luego entrar manualmente a Supabase → Authentication → Users → Add user con el mismo correo. Ahora todo se hace desde un solo formulario en la plataforma.
+
+**Qué se construyó:**
+- Edge Function nueva `crear-usuario` (solo admins): crea la cuenta de acceso en Supabase Auth (`auth.admin.createUser`, ya confirmada) y el perfil en `usuarios` en un solo paso. Si falla el perfil, revierte la cuenta de Auth para no dejar cuentas huérfanas.
+- `lib/api.js`: nueva `crearUsuarioConCuenta()` que llama a la función.
+- `VistaG_Usuarios.jsx`: el modal "+ Nuevo usuario" ahora pide **contraseña temporal** (con botón "Generar"). Se quitaron los avisos de "ve a Supabase manualmente".
+
+**Estado:** Edge Function ya desplegada por Pablo. Código en `main` (push hecho). No requiere migración SQL ni secretos nuevos (reutiliza `SUPABASE_SERVICE_ROLE_KEY`, ya inyectada automáticamente).
+
+**Cómo probar:** Gestión de Usuarios → "+ Nuevo usuario" → llena nombre, correo, contraseña (o dale "Generar"), rol y zona → Crear usuario. Debe aparecer en la tabla y el usuario debe poder iniciar sesión de inmediato con esa contraseña.
+
+---
+
 ## 2026-06-30 (noche, cont.) · Pablo + Claude · ✅ UX: estado "Calendar conectado" visible
 
 Antes, el botón "📅 Conectar Google Calendar" en "Mis instalaciones" se mostraba siempre, aunque el instalador ya hubiera conectado su cuenta — confuso. Ahora el botón cambia a un badge **"✅ Calendar conectado"** cuando el usuario ya tiene su `google_refresh_token` guardado, y al terminar el flujo OAuth se detecta el cierre del popup y se refresca el estado solo (sin recargar la página).

@@ -10,6 +10,25 @@
 
 ---
 
+## 2026-06-30 (noche) · Pablo + Claude · ✅ Campos Vendedor/Correo cliente + formato de evento en Calendar
+
+Se mejoró el evento de Google Calendar para que tenga el mismo formato que ya se usa en WhatsApp (paneles, inversor, ubicación, etc.) y se agregaron dos campos nuevos al proyecto: **Vendedor** y **Correo del cliente**.
+
+**Qué se construyó:**
+- `sql/migracion_vendedor_correo.sql`: columnas nuevas `vendedor` y `correo_cliente` en `proyectos`. **Ya corrida en producción.**
+- `VistaA_Agenda.jsx`: el modal "+ Agendar instalación" ahora tiene el campo **Vendedor** (arriba de Cliente) y **Correo del cliente** (debajo de Cliente).
+- `VistaC_Detalle.jsx`: mismos dos campos en "Editar proyecto", y se muestran en la tarjeta de información del proyecto.
+- Edge Function `gcal-event`: el `select` ahora trae vendedor, correo_cliente y los detalles de panel/inversor; la descripción del evento de Calendar quedó con el mismo formato que WhatsApp (Nombre, Dirección, Ubicación, Paneles, Inversor, Correo, Folio, OV Odoo, Zona, Vendedor, Nota). **Ya desplegado en Supabase.**
+
+**Estado:** migración y deploy ya corridos por Pablo. Código en `main` (push hecho).
+
+**Cómo probar:**
+- "+ Agendar instalación" → llena vendedor, cliente, correo, paneles e inversor, agenda fecha y cuadrilla con responsable conectado a Google Calendar.
+- Revisa el evento creado en Google Calendar — debe traer el formato completo tipo WhatsApp.
+- Edita un proyecto existente desde Detalle y confirma que vendedor/correo se guardan y aparecen en el info-grid.
+
+---
+
 ## 2026-06-30 · Pablo + Claude · ✅ Integración Google Calendar para instaladores
 
 Se construyó e integró el flujo completo de Google Calendar OAuth. Cuando un PM o admin agenda una instalación con cuadrilla asignada, el evento aparece automáticamente en el Google Calendar del responsable de esa cuadrilla, sin que el instalador tenga que entrar a la plataforma.

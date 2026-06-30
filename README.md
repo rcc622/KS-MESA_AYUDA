@@ -17,9 +17,17 @@ cortes de pago, bitácora antifraude y tablero de control. Web app **mobile-firs
 ├─ instalaciones-dom/     ← LA APP (Vite + React + Supabase). Aquí vive todo el código.
 ├─ BASES/                 ← Documentos fuente de verdad del proyecto (contexto de negocio)
 ├─ Tools/                 ← Guías de herramientas de apoyo (opcionales, por dev)
-├─ docs/                  ← Retro/handoff ejecutable del módulo
+├─ docs/                  ← Guía de devs + QA, último estatus y retro ejecutable
+│   ├─ ESTATUS.md         ← 📌 bitácora "Último Estatus" (qué se hizo en cada sesión)
+│   ├─ GUIA_DEV.md        ← 🛠️ cómo correr/probar cada módulo y qué está roto
+│   └─ RETRO_v2_...md     ← retro ejecutable del módulo
+├─ CLAUDE.md              ← protocolo de trabajo (lo lee la IA al iniciar sesión)
 └─ README.md              ← este archivo
 ```
+
+> **Devs (Randall, Pablo):** al sentarte a trabajar, abre **`docs/ESTATUS.md`** para ver
+> lo último que se movió, y **`docs/GUIA_DEV.md`** para correr/probar. La IA (Claude)
+> hace esto automáticamente gracias a **`CLAUDE.md`**.
 
 ---
 

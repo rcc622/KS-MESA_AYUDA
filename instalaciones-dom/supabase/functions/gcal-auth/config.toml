@@ -1,0 +1,2 @@
+[functions.gcal-auth]
+verify_jwt = false

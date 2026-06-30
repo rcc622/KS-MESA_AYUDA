@@ -21,7 +21,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
 
   const WATTS_POR_PANEL = 600;   // base fija para calcular el tamaño del sistema (kWp)
   const PROY_VACIO = {
-    folio: '', folio_odoo: '', cliente: '', direccion: '', maps_url: '',
+    folio: '', folio_odoo: '', vendedor: '', cliente: '', correo_cliente: '', direccion: '', maps_url: '',
     zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', notas: '',
     panel_potencia_w: '', panel_marca: '',
     inversor_tipo: '', inversor_cantidad: '', inversor_capacidad_kw: '', inversor_marca: '',
@@ -72,7 +72,9 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
       const paneles = nuevoProy.paneles ? parseInt(nuevoProy.paneles) : null;
       const payload = {
         ...nuevoProy,
+        vendedor:     nuevoProy.vendedor || null,
         folio_odoo:   nuevoProy.folio_odoo || null,
+        correo_cliente: nuevoProy.correo_cliente || null,
         direccion:    nuevoProy.direccion || null,
         maps_url:     nuevoProy.maps_url || null,
         fecha_agenda: nuevoProy.fecha_agenda || null,
@@ -228,8 +230,16 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
             </div>
           </div>
           <div className="form-group">
+            <label>Vendedor</label>
+            <input value={nuevoProy.vendedor} onChange={e => setNuevoProy(p => ({ ...p, vendedor: e.target.value }))} placeholder="Nombre del vendedor" />
+          </div>
+          <div className="form-group">
             <label>Cliente</label>
             <input value={nuevoProy.cliente} onChange={e => setNuevoProy(p => ({ ...p, cliente: e.target.value }))} required />
+          </div>
+          <div className="form-group">
+            <label>Correo del cliente <span className="text-gray text-xs">(opcional)</span></label>
+            <input type="email" value={nuevoProy.correo_cliente} onChange={e => setNuevoProy(p => ({ ...p, correo_cliente: e.target.value }))} placeholder="cliente@ejemplo.com" />
           </div>
           <div className="form-group">
             <label>Dirección</label>

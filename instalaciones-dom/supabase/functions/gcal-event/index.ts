@@ -62,17 +62,35 @@ async function getAccessToken(refreshToken: string): Promise<string> {
 
 // Construye el cuerpo del evento para la API de Google Calendar
 function buildEventBody(proyecto: any) {
-  const fecha = proyecto.fecha_agenda; // 'YYYY-MM-DD'
+  const fecha = proyecto.fecha_agenda;
   const titulo = `Instalación solar · ${proyecto.cliente}`;
+
+  const panelDetalle = [
+    proyecto.paneles ? `${proyecto.paneles} PANELES` : null,
+    proyecto.panel_potencia_w ? `${proyecto.panel_potencia_w} W` : null,
+    proyecto.panel_marca || null,
+  ].filter(Boolean).join(' / ');
+
+  const inversorDetalle = [
+    proyecto.inversor_cantidad ? `${proyecto.inversor_cantidad}` : null,
+    proyecto.inversor_marca || null,
+    proyecto.inversor_capacidad_kw ? `${proyecto.inversor_capacidad_kw} kW` : null,
+  ].filter(Boolean).join(' ');
+
   const descripcion = [
-    `Folio: ${proyecto.folio}`,
+    `Nombre del cliente: ${proyecto.cliente}`,
+    proyecto.direccion ? `Dirección: ${proyecto.direccion}` : null,
+    proyecto.maps_url ? `Ubicación: ${proyecto.maps_url}` : null,
+    panelDetalle ? `Paneles: ${panelDetalle}` : null,
+    inversorDetalle ? `Inversor: ${inversorDetalle}` : null,
+    proyecto.correo_cliente ? `Correo: ${proyecto.correo_cliente}` : null,
+    '',
+    `Folio KENET: ${proyecto.folio}`,
     proyecto.folio_odoo ? `OV Odoo: ${proyecto.folio_odoo}` : null,
     proyecto.zona ? `Zona: ${proyecto.zona}` : null,
-    proyecto.kw ? `Sistema: ${proyecto.kw} kWp` : null,
-    proyecto.paneles ? `Paneles: ${proyecto.paneles}` : null,
-    proyecto.maps_url ? `Ubicación: ${proyecto.maps_url}` : null,
-    proyecto.notas ? `Notas: ${proyecto.notas}` : null,
-  ].filter(Boolean).join('\n');
+    proyecto.vendedor ? `Vendedor: ${proyecto.vendedor}` : null,
+    proyecto.notas ? `\nNota: ${proyecto.notas}` : null,
+  ].filter(s => s !== null).join('\n');
 
   return {
     summary: titulo,
@@ -143,8 +161,9 @@ Deno.serve(async (req) => {
   const { data: proyecto, error: proyectoError } = await supabaseAdmin
     .from('proyectos')
     .select(`
-      id, folio, folio_odoo, cliente, direccion, maps_url, zona,
+      id, folio, folio_odoo, vendedor, cliente, correo_cliente, direccion, maps_url, zona,
       fecha_agenda, paneles, kw, notas, gcal_event_id,
+      panel_potencia_w, panel_marca, inversor_tipo, inversor_cantidad, inversor_capacidad_kw, inversor_marca,
       cuadrilla:cuadrillas(
         id, nombre,
         responsable:usuarios!cuadrillas_responsable_id_fkey(id, nombre, email, google_refresh_token)

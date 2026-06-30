@@ -136,7 +136,8 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
   const abrirEditar = () => {
     const p = proyecto;
     setFormEdit({
-      cliente: p.cliente || '', telefono: p.telefono || '', direccion: p.direccion || '', maps_url: p.maps_url || '',
+      vendedor: p.vendedor || '', cliente: p.cliente || '', correo_cliente: p.correo_cliente || '',
+      telefono: p.telefono || '', direccion: p.direccion || '', maps_url: p.maps_url || '',
       zona: p.zona || 'MTY', folio_odoo: p.folio_odoo || '', cuadrilla_id: p.cuadrilla_id || '',
       paneles: p.paneles ?? '', panel_potencia_w: p.panel_potencia_w ?? '', panel_marca: p.panel_marca || '',
       inversor_tipo: p.inversor_tipo || '', inversor_cantidad: p.inversor_cantidad ?? '',
@@ -152,7 +153,9 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
     try {
       const paneles = formEdit.paneles ? parseInt(formEdit.paneles) : null;
       await actualizarProyecto(proyecto.id, {
+        vendedor: formEdit.vendedor || null,
         cliente: formEdit.cliente,
+        correo_cliente: formEdit.correo_cliente || null,
         telefono: formEdit.telefono || null,
         direccion: formEdit.direccion || null,
         maps_url: formEdit.maps_url || null,
@@ -257,6 +260,8 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
                 <div className="info-grid">
                   <div className="info-item"><div className="info-label">Folio KENET</div><div className="info-val text-blue">{proyecto.folio}</div></div>
                   <div className="info-item"><div className="info-label">OV Odoo</div><div className="info-val">{proyecto.folio_odoo || '—'}</div></div>
+                  <div className="info-item"><div className="info-label">Vendedor</div><div className="info-val">{proyecto.vendedor || '—'}</div></div>
+                  <div className="info-item"><div className="info-label">Correo cliente</div><div className="info-val">{proyecto.correo_cliente || '—'}</div></div>
                   <div className="info-item"><div className="info-label">Zona</div><div className="info-val"><span className="badge badge-zona">{proyecto.zona}</span></div></div>
                   <div className="info-item"><div className="info-label">Paneles / kW</div><div className="info-val">{proyecto.paneles ?? '—'} pnl · {proyecto.kw ?? '—'} kW</div></div>
                   <div className="info-item"><div className="info-label">Fecha agenda</div><div className="info-val">{fechaMostrada || '—'}</div></div>
@@ -392,10 +397,12 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       >
         {formEdit && (
           <>
+            <div className="form-group"><label>Vendedor</label><input value={formEdit.vendedor} onChange={e => setFormEdit(f => ({ ...f, vendedor: e.target.value }))} placeholder="Nombre del vendedor" /></div>
             <div className="form-row">
               <div className="form-group"><label>Cliente</label><input value={formEdit.cliente} onChange={e => setFormEdit(f => ({ ...f, cliente: e.target.value }))} /></div>
               <div className="form-group"><label>Teléfono</label><input value={formEdit.telefono} onChange={e => setFormEdit(f => ({ ...f, telefono: e.target.value }))} /></div>
             </div>
+            <div className="form-group"><label>Correo del cliente</label><input type="email" value={formEdit.correo_cliente} onChange={e => setFormEdit(f => ({ ...f, correo_cliente: e.target.value }))} placeholder="cliente@ejemplo.com" /></div>
             <div className="form-group"><label>Dirección</label><input value={formEdit.direccion} onChange={e => setFormEdit(f => ({ ...f, direccion: e.target.value }))} /></div>
             <div className="form-group"><label>Link de Google Maps</label><input type="url" value={formEdit.maps_url} onChange={e => setFormEdit(f => ({ ...f, maps_url: e.target.value }))} placeholder="https://maps.app.goo.gl/…" /></div>
             <div className="form-row">

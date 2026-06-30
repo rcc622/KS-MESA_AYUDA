@@ -15,15 +15,24 @@ const TOOL_LABEL = {
   detalle_proyecto: 'detalle de proyecto',
   bitacora_proyecto: 'bitácora',
 };
+// Motores disponibles para testear en la plataforma (Claude queda fuera para no
+// gastar/contaminar la cuenta personal de Claude). Ambos corren en Groq.
+const LS_PROVIDER = 'ks_ia_provider';
+const MOTORES_VALIDOS = ['llama', 'qwen'];
+const motorInicial = () => {
+  const s = localStorage.getItem(LS_PROVIDER);
+  return MOTORES_VALIDOS.includes(s) ? s : 'llama';
+};
 
 export default function VistaAsistente({ usuarioActual }) {
   const [mensajes, setMensajes] = useState([]); // {role, content, usadas?, error?}
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [provider, setProvider] = useState('claude');
+  const [provider, setProvider] = useState(motorInicial);
   const finRef = useRef(null);
   const inputRef = useRef(null);
 
+  useEffect(() => { localStorage.setItem(LS_PROVIDER, provider); }, [provider]);
   useEffect(() => { finRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensajes, cargando]);
 
   const enviar = async (textoForzado) => {
@@ -64,9 +73,8 @@ export default function VistaAsistente({ usuarioActual }) {
         <div className="ia-provider">
           <label>Motor</label>
           <select value={provider} onChange={e => setProvider(e.target.value)}>
-            <option value="claude">Claude (preciso)</option>
             <option value="llama">Llama · Groq (rápido)</option>
-            <option value="qwen">Qwen (a prueba)</option>
+            <option value="qwen">Qwen · Groq (a prueba)</option>
           </select>
         </div>
       </div>

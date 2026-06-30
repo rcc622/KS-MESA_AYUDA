@@ -10,6 +10,28 @@
 
 ---
 
+## 2026-06-30 (noche) · Randall + Claude · Quitamos Claude de la plataforma + fix de hooks
+
+Por decisión de Randall (no gastar/contaminar su cuenta personal de Claude), **sacamos
+el motor Claude** del asistente. Ahora solo se testean **Llama y Qwen, ambos en Groq**
+(una sola llave `GROQ_API_KEY`). También arreglamos 2 errores de lint.
+
+**Qué se movió:**
+- Backend `ia`: eliminado el motor Claude (función `correrClaude`, constante y rama del
+  handler). Default = `llama`; soporta `llama` y `qwen`. README/CLAUDE.md actualizados.
+- Front: el selector de motor ahora solo muestra **Llama** y **Qwen** (vista completa
+  y burbuja). El default ya no es Claude; ambas superficies recuerdan el motor.
+- Fix: 2 errores **rules-of-hooks** en `VistaG_Usuarios.jsx` (el guard de admin se movió
+  después de los hooks).
+
+**Pendiente / cómo probar:**
+- **Redeplegar `ia`** para que tome estos cambios (sin Claude). Solo se necesita
+  `GROQ_API_KEY` (ya está puesta).
+- Probar: burbuja 💬 → alternar **Llama** vs **Qwen** con la misma pregunta y comparar.
+- Validado local: `npm run build` OK y `npm run lint` ya sin los 2 errores de hooks.
+
+---
+
 ## 2026-06-30 (tarde) · Randall + Claude · 3er motor Qwen + recuperación de la burbuja flotante
 
 Agregamos **Qwen** como tercer motor del asistente (para comparar Llama vs Qwen vs Claude)

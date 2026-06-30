@@ -1,4 +1,4 @@
-# Edge Function `ia` — Asistente IA (Claude + Llama)
+# Edge Function `ia` — Asistente IA (Llama + Qwen, en Groq)
 
 Backend agnóstico que da vida a la sección **💬 Asistente** de la plataforma.
 Vive en Supabase (no en Vercel) porque está pegado a los datos, hereda Auth/RLS y
@@ -8,7 +8,8 @@ guarda las llaves de IA como **secretos** (nunca en el navegador).
 
 ## Qué hace
 - Recibe el historial del chat desde el front (con el JWT del usuario).
-- Según `provider` (`claude` por defecto, o `llama`), llama a Anthropic o a Groq.
+- Según `provider` (`llama` por defecto, o `qwen`), llama a Groq con uno u otro modelo.
+  *(Claude/Anthropic se quitó a propósito para no usar la cuenta personal de Claude.)*
 - Usa **tool use** para consultar la base **en vivo** (solo lectura): `resumen_kpis`,
   `listar_proyectos`, `detalle_proyecto`, `bitacora_proyecto`.
 - Como corre con el JWT del usuario, **todas las consultas respetan RLS**.
@@ -24,10 +25,7 @@ guarda las llaves de IA como **secretos** (nunca en el navegador).
 
 ## 1) Pon los secretos (las LLAVES — nunca van al repo)
 ```bash
-# Para usar Claude (recomendado para lo difícil):
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-
-# Para usar Llama vía Groq (opcional, rápido y barato). Saca una llave gratis en
+# ÚNICA llave necesaria: Groq (corre Llama Y Qwen). Saca una gratis en
 # https://console.groq.com → API Keys
 supabase secrets set GROQ_API_KEY=gsk_...
 
@@ -53,10 +51,10 @@ Debe responder con números reales (usa la herramienta `resumen_kpis`).
 ## Notas
 - **CSP:** el front llama a `*.supabase.co`, que ya está permitido en `vercel.json`
   (`connect-src`). No hay que tocar nada.
-- **Modelo Claude:** `claude-opus-4-8`. **Modelo Llama:** `llama-3.3-70b-versatile`
-  (Groq). Para cambiarlos, edita las constantes al inicio de `index.ts`.
+- **Modelo Llama:** `llama-3.3-70b-versatile`. **Modelo Qwen:** `qwen/qwen3-32b`
+  (ambos en Groq). Para cambiarlos, edita las constantes al inicio de `index.ts`.
 - **Solo lectura.** La IA no escribe en la base en esta versión. Si pides crear o
   editar, te remite a la sección correspondiente de la plataforma.
-- **Costos:** cada respuesta consume tokens del proveedor elegido. Claude es más
-  preciso; Llama (Groq) es más barato para preguntas simples. El selector "Motor"
-  en la cabecera del chat permite alternar.
+- **Costos:** ambos motores corren en Groq (plan gratis con límite por minuto). El
+  selector "Motor" en la cabecera del chat permite alternar entre Llama y Qwen para
+  comparar cuál da mejores resultados.

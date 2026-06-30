@@ -27,18 +27,6 @@ export default function VistaG_Usuarios({ usuarioActual }) {
   const [form, setForm] = useState(FORM_VACIO);
   const [guardando, setGuardando] = useState(false);
 
-  // Protección: solo admins
-  if (usuarioActual?.rol !== 'admin') {
-    return (
-      <div className="page-body">
-        <div className="empty-state">
-          <div className="es-icon">🔒</div>
-          <p>Acceso restringido. Solo administradores pueden gestionar usuarios.</p>
-        </div>
-      </div>
-    );
-  }
-
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
@@ -51,6 +39,19 @@ export default function VistaG_Usuarios({ usuarioActual }) {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Protección: solo admins. Va DESPUÉS de los hooks para no romper las reglas
+  // de React (los hooks deben llamarse siempre en el mismo orden).
+  if (usuarioActual?.rol !== 'admin') {
+    return (
+      <div className="page-body">
+        <div className="empty-state">
+          <div className="es-icon">🔒</div>
+          <p>Acceso restringido. Solo administradores pueden gestionar usuarios.</p>
+        </div>
+      </div>
+    );
+  }
 
   const abrirEditar = (u) => {
     setForm({ nombre: u.nombre, email: u.email, rol: u.rol, zona: u.zona || 'MTY', activo: u.activo });

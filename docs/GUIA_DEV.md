@@ -106,16 +106,16 @@ Marca lo que pruebes. Si algo falla, anótalo en **§4 Problemas conocidos**.
 
 > Formato: `[ESTADO] descripción — (quién/cómo)`. ESTADO: ABIERTO / EN PROGRESO / RESUELTO.
 
-- [ABIERTO] Motor **Claude** da "Falta el secreto ANTHROPIC_API_KEY" hasta que se ponga
-  esa llave en Supabase Secrets. (Pendiente de Randall.)
-- [ABIERTO] La **vista completa** del Asistente arranca siempre en motor "Claude" (no
-  recuerda la elección como sí lo hace la burbuja flotante). Inconsistencia menor de UX.
+- [RESUELTO 2026-06-30] Motor **Claude** se quitó de la plataforma (para no gastar la
+  cuenta personal de Claude). Hoy solo Llama y Qwen, ambos en Groq con una sola llave.
+- [RESUELTO 2026-06-30] La vista completa del Asistente ya **recuerda el motor** elegido
+  (localStorage), igual que la burbuja flotante.
 - [NOTA] El build avisa que un chunk pesa >500 kB (xlsx/html2canvas). No rompe nada;
   a futuro se puede dividir con `import()` dinámico.
-- [ABIERTO] `npm run lint` (oxlint) marca 2 errores **rules-of-hooks** en
-  `VistaG_Usuarios.jsx` (líneas ~42 y ~53: hooks llamados condicionalmente) y varios
-  warnings menores en `VistaE_Import.jsx` / `VistaF_Reporte.jsx`. Pre-existentes;
-  conviene arreglar los de hooks (pueden causar bugs sutiles).
+- [RESUELTO 2026-06-30] Los 2 errores **rules-of-hooks** de `VistaG_Usuarios.jsx` se
+  arreglaron (el guard de "solo admins" ahora va después de los hooks). Quedan unos
+  warnings menores (escapes/`catch` sin usar) en `VistaE_Import.jsx`/`VistaF_Reporte.jsx`,
+  no críticos.
 - [MANEJADO] Motor **Llama** puede dar 429 (Groq plan gratis: 12k tokens/min). La Edge
   Function ahora **reintenta 1 vez** y, si persiste, muestra mensaje claro ("espera ~30s
   o cambia a Claude"). Para uso pesado: poner llave de Claude o subir Groq a Dev Tier.

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Edge Function: /ia  ·  Asistente IA agnóstico (Claude + Llama) con tool use
+// Edge Function: /ia  ·  Asistente IA (Llama + Qwen, en Groq) con tool use
 // ─────────────────────────────────────────────────────────────────────────────
 // Por qué vive aquí (Supabase Edge Function) y no en Vercel:
 //   • Está PEGADA a los datos → menos latencia y sin costo de egress.
@@ -7,14 +7,14 @@
 //     consultas respetan Row-Level Security (un cliente jamás ve datos de otro).
 //   • Las LLAVES de IA viven como SECRETOS aquí, nunca en el navegador.
 //
-// Proveedor AGNÓSTICO: el front manda `provider: 'claude' | 'llama'`; por dentro
-// se traduce al formato nativo de cada API. Estrategia híbrida (ver
-// BASES/Roadmap_IA_y_Plataforma.md): Claude para lo difícil, Llama (Groq) para
-// lo masivo y barato.
+// Proveedor AGNÓSTICO: el front manda `provider: 'llama' | 'qwen'`. Ambos corren en
+// Groq (API compatible con OpenAI) con un solo runner. Se usan para comparar qué IA
+// da mejores resultados. NOTA: el motor Claude/Anthropic se quitó a propósito para no
+// gastar la cuenta personal de Claude (ver BASES/Roadmap_IA_y_Plataforma.md).
 //
 // Secretos requeridos (Supabase → Project Settings → Edge Functions → Secrets):
-//   ANTHROPIC_API_KEY   (para provider 'claude')
-//   GROQ_API_KEY        (para provider 'llama', vía Groq — OpenAI-compatible)
+//   GROQ_API_KEY   (corre Llama Y Qwen; única llave necesaria)
+//   QWEN_API_KEY / QWEN_BASE_URL / QWEN_MODEL  (opcionales: Qwen en otro proveedor)
 // SUPABASE_URL y SUPABASE_ANON_KEY los inyecta Supabase automáticamente.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -26,7 +26,6 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const CLAUDE_MODEL = 'claude-opus-4-8';
 const MAX_ITERACIONES = 6; // tope del loop de tool use (anti-bucle infinito)
 
 // ── Motores compatibles con OpenAI (Llama y Qwen) ────────────────────────────
@@ -176,66 +175,11 @@ async function ejecutarTool(supabase: any, nombre: string, input: any): Promise<
   }
 }
 
-// ── PROVEEDOR: CLAUDE (Anthropic Messages API) ───────────────────────────────
-async function correrClaude(supabase: any, historial: any[], system: string, apiKey: string) {
-  const tools = TOOLS.map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
-  const messages = historial.map(m => ({ role: m.role, content: m.content }));
-  const usadas: string[] = [];
-
-  for (let i = 0; i < MAX_ITERACIONES; i++) {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 2048,
-        system,
-        messages,
-        tools,
-      }),
-    });
-    if (resp.status === 429 || resp.status === 529) {
-      throw new Error('El motor Claude está saturado o llegó a su límite. Espera unos segundos y reintenta, o cambia el motor a "Llama".');
-    }
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error(`Anthropic ${resp.status}: ${txt}`);
-    }
-    const data = await resp.json();
-
-    if (data.stop_reason === 'tool_use') {
-      // Devuelve el turno del asistente (incluye bloques tool_use) tal cual.
-      messages.push({ role: 'assistant', content: data.content });
-      const toolResults = [];
-      for (const bloque of data.content) {
-        if (bloque.type === 'tool_use') {
-          usadas.push(bloque.name);
-          const resultado = await ejecutarTool(supabase, bloque.name, bloque.input);
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: bloque.id,
-            content: JSON.stringify(resultado),
-          });
-        }
-      }
-      messages.push({ role: 'user', content: toolResults });
-      continue;
-    }
-
-    // Respuesta final: junta el texto.
-    const texto = (data.content || [])
-      .filter((b: any) => b.type === 'text')
-      .map((b: any) => b.text)
-      .join('\n')
-      .trim();
-    return { reply: texto || '(sin respuesta)', usadas, provider: 'claude' };
-  }
-  return { reply: 'No pude completar la consulta (demasiados pasos).', usadas, provider: 'claude' };
-}
+// NOTA: el motor Claude (Anthropic) se quitó a propósito de la plataforma para no
+// gastar/contaminar la cuenta personal de Claude mientras se testean IAs. Solo se usan
+// motores en Groq (Llama y Qwen). Si en el futuro se quiere reactivar Claude, conviene
+// hacerlo con una cuenta/llave de servicio dedicada (no personal). El historial en git
+// conserva la implementación previa de `correrClaude`.
 
 // ── PROVEEDORES compatibles con OpenAI (Llama/Groq y Qwen) ───────────────────
 // Un solo runner sirve para cualquier API estilo OpenAI: solo cambian url, modelo y key.
@@ -315,7 +259,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const provider = ['llama', 'qwen'].includes(body?.provider) ? body.provider : 'claude';
+    // Motores soportados: 'llama' y 'qwen' (ambos en Groq). 'llama' es el default.
+    const provider = body?.provider === 'qwen' ? 'qwen' : 'llama';
     const historial = Array.isArray(body?.messages) ? body.messages : [];
     // Sanea el historial: solo roles válidos y contenido string.
     const limpio = historial
@@ -329,19 +274,15 @@ Deno.serve(async (req) => {
     const system = SYSTEM_PROMPT(hoy);
 
     let salida;
-    if (provider === 'llama') {
-      const key = Deno.env.get('GROQ_API_KEY');
-      if (!key) throw new Error('Falta el secreto GROQ_API_KEY en Supabase (para usar Llama).');
-      salida = await correrOpenAICompat(supabase, limpio, system, key, GROQ_URL, LLAMA_MODEL, 'llama');
-    } else if (provider === 'qwen') {
+    if (provider === 'qwen') {
       // Qwen corre en Groq por defecto → usa GROQ_API_KEY si no hay QWEN_API_KEY aparte.
       const key = Deno.env.get('QWEN_API_KEY') || Deno.env.get('GROQ_API_KEY');
       if (!key) throw new Error('Falta QWEN_API_KEY o GROQ_API_KEY en Supabase (para usar Qwen).');
       salida = await correrOpenAICompat(supabase, limpio, system, key, QWEN_URL, QWEN_MODEL, 'qwen');
     } else {
-      const key = Deno.env.get('ANTHROPIC_API_KEY');
-      if (!key) throw new Error('Falta el secreto ANTHROPIC_API_KEY en Supabase (para usar Claude).');
-      salida = await correrClaude(supabase, limpio, system, key);
+      const key = Deno.env.get('GROQ_API_KEY');
+      if (!key) throw new Error('Falta el secreto GROQ_API_KEY en Supabase (para usar Llama).');
+      salida = await correrOpenAICompat(supabase, limpio, system, key, GROQ_URL, LLAMA_MODEL, 'llama');
     }
 
     return new Response(JSON.stringify(salida), { headers: { ...CORS, 'content-type': 'application/json' } });

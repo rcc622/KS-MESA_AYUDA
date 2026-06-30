@@ -57,8 +57,10 @@ desplegada en **Vercel**. Contexto de negocio en **`BASES/`** (empieza por
 - **Branch de desarrollo:** trabaja en la rama que te indiquen; **no** pushees a `main`
   sin permiso explícito del developer.
 - **Convención de IA:** el backend de IA vive en **Supabase Edge Functions**
-  (`instalaciones-dom/supabase/functions/`), es **agnóstico** (Claude + Llama) y las
-  llaves van como secretos. No metas llaves de IA en el front.
+  (`instalaciones-dom/supabase/functions/`), es **agnóstico** y hoy usa **Llama y Qwen
+  en Groq** (una sola llave `GROQ_API_KEY`). **Claude/Anthropic está desactivado** a
+  propósito para no gastar la cuenta personal de Claude; si se reactiva, usar una
+  cuenta/llave de servicio dedicada. Las llaves van como secretos, nunca en el front.
 
 ## 5. 📌 Mapa rápido de archivos clave
 

@@ -10,15 +10,20 @@ const TOOL_LABEL = {
 };
 const SUGERENCIAS = ['¿Cómo vamos en general?', '¿Qué hay por agendar?', 'Proyectos críticos'];
 const LS_PROVIDER = 'ks_ia_provider';
+const MOTORES_VALIDOS = ['llama', 'qwen'];
 
 // Burbuja flotante de chat, presente sobre todas las pantallas. Comparte el motor
-// (Claude/Llama/Qwen) con la vista completa vía localStorage.
+// (Llama/Qwen) con la vista completa vía localStorage. Claude queda fuera para no
+// gastar la cuenta personal de Claude.
 export default function AsistenteFlotante({ usuarioActual, oculto }) {
   const [abierto, setAbierto] = useState(false);
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [provider, setProvider] = useState(() => localStorage.getItem(LS_PROVIDER) || 'claude');
+  const [provider, setProvider] = useState(() => {
+    const s = localStorage.getItem(LS_PROVIDER);
+    return MOTORES_VALIDOS.includes(s) ? s : 'llama';
+  });
   const finRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -68,7 +73,6 @@ export default function AsistenteFlotante({ usuarioActual, oculto }) {
             </div>
             <div className="ia-pop-actions">
               <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Motor de IA">
-                <option value="claude">Claude</option>
                 <option value="llama">Llama</option>
                 <option value="qwen">Qwen</option>
               </select>

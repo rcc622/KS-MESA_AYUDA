@@ -10,6 +10,21 @@
 
 ---
 
+## 2026-07-01 · Randall + Claude · ✅ Fase 2 y Fase 3 ACTIVADAS
+
+Randall corrió los 2 pasos: **redeploy de la función `ia`** (Fase 2) y
+**`sql/migracion_cfe.sql`** (Fase 3). Ambas fases quedan **en vivo y funcionando**.
+
+- ✅ **Import inteligente:** el botón 🪄 "Formatear con IA" ya responde (Llama/Qwen).
+- ✅ **Módulo CFE / Gestoría:** la tabla `cfe_tramites` existe; ya se pueden crear y
+  gestionar trámites, y la alerta de medidor bidireccional → Cobranza opera.
+
+**Pendiente / próximos:** testear ambas con datos reales; afinar prompt de mapeo si hace
+falta; **Fase 4** (chat del cliente + Portal). Roadmap negocio: integración **TOKU** para
+el cobro cuando salta la alerta de Cobranza.
+
+---
+
 ## 2026-07-01 (AFK) · Randall (AFK) + Claude · Fase 2 (import inteligente) + Fase 3 (módulo CFE)
 
 Randall dejó AFK mode: construí **Fase 2 e Fase 3** para que las revise. También se

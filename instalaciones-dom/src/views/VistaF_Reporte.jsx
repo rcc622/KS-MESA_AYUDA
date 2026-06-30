@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError, subirEvidencia } from '../lib/api';
+import { conectarGoogleCalendar } from '../lib/gcal';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import FirmaCanvas from '../components/FirmaCanvas';
@@ -238,7 +239,25 @@ export default function VistaF_Reporte({ usuarioActual }) {
       <>
         <div className="page-header">
           <div><h2>{titulo}</h2><div className="sub">{proyectos.length} {proyectos.length === 1 ? 'instalación' : 'instalaciones'} por atender</div></div>
-          <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {esInstalador && (
+              <button
+                className="btn btn-outline btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={async () => {
+                  try {
+                    await conectarGoogleCalendar(usuarioActual.id);
+                  } catch (e) {
+                    alert('No se pudo abrir la autorización de Google: ' + e.message);
+                  }
+                }}
+                title="Conecta tu Google Calendar para recibir tus instalaciones automáticamente"
+              >
+                📅 Conectar Google Calendar
+              </button>
+            )}
+            <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
+          </div>
         </div>
         <div className="page-body">
           <div className="reporte-wrap">

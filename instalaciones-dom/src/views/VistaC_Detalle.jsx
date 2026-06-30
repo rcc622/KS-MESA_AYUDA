@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getBitacora, getProyecto, getCuadrillas, agregarBitacora, actualizarProyecto, mensajeError } from '../lib/api';
+import { sincronizarEventoCalendar } from '../lib/gcal';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
 import Modal from '../components/Modal';
@@ -122,6 +123,9 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       setFechaAgenda('');
       cargarBitacora();
       refrescar();
+      // Crear o actualizar evento en Google Calendar del responsable de la cuadrilla
+      const accionCal = proyecto.gcal_event_id ? 'actualizar' : 'crear';
+      sincronizarEventoCalendar(proyecto.id, accionCal);
     } catch (e) {
       alert(mensajeError(e));
     } finally {
@@ -169,6 +173,12 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       await refrescar();
       cargarBitacora();
       setModalEditar(false);
+      // Si se cambió la cuadrilla y el proyecto ya tiene fecha, sincronizar el evento
+      const cuadrillacambio = formEdit.cuadrilla_id !== (proyecto.cuadrilla_id || '');
+      if (cuadrillacambio && proyecto.fecha_agenda) {
+        const accionCal = proyecto.gcal_event_id ? 'actualizar' : 'crear';
+        sincronizarEventoCalendar(proyecto.id, accionCal);
+      }
     } catch (e) {
       alert(mensajeError(e));
     } finally {
@@ -207,6 +217,8 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       setModalReag(false);
       cargarBitacora();
       refrescar();
+      // Actualizar evento en Google Calendar con la nueva fecha
+      sincronizarEventoCalendar(proyecto.id, 'actualizar');
     } catch (e) {
       alert(mensajeError(e));
     } finally {
@@ -354,6 +366,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
                   onClick={async () => {
                     if (!confirm('¿Cancelar este proyecto?')) return;
                     await actualizarProyecto(proyecto.id, { estatus: 'cancelado' });
+                    sincronizarEventoCalendar(proyecto.id, 'eliminar');
                     setVista('agenda');
                   }}>
                   ✕ Cancelar proyecto

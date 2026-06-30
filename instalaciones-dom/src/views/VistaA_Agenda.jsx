@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getProyectos, getCuadrillas, crearProyecto, agregarBitacora, mensajeError } from '../lib/api';
+import { sincronizarEventoCalendar } from '../lib/gcal';
 import SLABadge from '../components/SLABadge';
 import EstatusBadge from '../components/EstatusBadge';
 import Modal from '../components/Modal';
@@ -99,6 +100,10 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
       setModalAgendar(false);
       setNuevoProy(PROY_VACIO);
       cargar();
+      // Si se creó con fecha y cuadrilla, sincronizar evento en Google Calendar
+      if (payload.fecha_agenda && payload.cuadrilla_id) {
+        sincronizarEventoCalendar(proyecto.id, 'crear');
+      }
     } catch (e) {
       alert(mensajeError(e));
     } finally {

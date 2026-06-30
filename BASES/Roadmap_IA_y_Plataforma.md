@@ -81,7 +81,12 @@ y lo que no puede fallar. Como el backend es agnóstico, se mide y se ajusta.
 | **0** | Backend agnóstico (Supabase Edge Function + secretos) | — | Bajo | cimiento de todo |
 | **1** | **Chat interno "Asistente"** con acceso a datos reales (estatus, resúmenes, bitácora) vía *tool use* | Equipo (admin/PM/coordinador/instalador) | Bajo ✅ | Fase 0 |
 | **2** | **Importación inteligente** — botón "Formatear con IA" para Excels sucios (mapea columnas arbitrarias al esquema; el humano revisa antes de importar) | PM | Bajo | Fase 0 |
-| **3** | **Chat del cliente** + **Portal Cliente** con login y *scoping* estricto por RLS (el cliente solo ve su proyecto) | Cliente | Medio — requiere cuidado | Fase 0 + RLS |
+| **3** | **Módulo CFE / Gestoría** — trámites ante CFE (UVIE, UIIE, RMU, interconexión, **medidor bidireccional**); al marcar que llegó el medidor → **alerta a Cobranza** ("ya se puede cobrar", hito 6.1). | Gestoría / PM / Coord | Medio | esquema + RLS |
+| **4** | **Chat del cliente** + **Portal Cliente** con login y *scoping* estricto por RLS (el cliente solo ve su proyecto) | Cliente | Medio — requiere cuidado | Fase 0 + RLS |
+
+> **Nota de motores (jun-2026):** para testear IAs sin gastar la cuenta personal de
+> Claude, hoy el asistente usa **Llama y Qwen en Groq** (una sola llave). Claude queda
+> reservado para reactivarse con cuenta de servicio dedicada.
 
 **Notas clave de cada fase:**
 - **El chat sin *tool use* alucina.** Para responder estatus *reales*, la IA llama

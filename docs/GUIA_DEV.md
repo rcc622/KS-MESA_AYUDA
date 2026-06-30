@@ -52,6 +52,7 @@ Detalle: `instalaciones-dom/supabase/functions/ia/README.md`.
 | `VistaL_Cuadrillas` | Config de cuadrillas + reglas KPI | admin/PM/coord |
 | `VistaG_Usuarios` | Gestión de usuarios | admin |
 | `VistaAsistente` + `AsistenteFlotante` | Chat IA (datos reales) | todos |
+| `VistaCFE` (módulo `cfe`) | CFE/Gestoría: trámites + medidor bidireccional → Cobranza | admin/PM/coord |
 
 Roles: `admin` · `pm_domestico` · `instalador` · `coordinador`. La matriz de qué vista
 ve cada rol está en `vistasPorRol()` dentro de `instalaciones-dom/src/App.jsx`.
@@ -89,6 +90,18 @@ Marca lo que pruebes. Si algo falla, anótalo en **§4 Problemas conocidos**.
 - [ ] **Firma** del cliente funciona en táctil.
 - [ ] Genera **PDF** y permite **compartir por WhatsApp**.
 - [ ] Al enviar, la instalación pasa a **completada** y aparece en Historial.
+
+### Importación inteligente (Fase 2)
+- [ ] Sube un Excel con columnas "raras" → botón **🪄 Formatear con IA** propone el mapeo.
+- [ ] El mapeo propuesto se muestra (origen → campo KENET) y el preview se actualiza.
+- [ ] *(Requiere `ia` redeplegada con la tarea `mapear_columnas`.)*
+
+### CFE / Gestoría (Fase 3)
+- [ ] El switcher de módulos muestra **CFE / Gestoría** activo; entra al módulo.
+- [ ] *(Requiere correr `sql/migracion_cfe.sql`.)* Crear un trámite y verlo en la lista.
+- [ ] Cambiar estado del trámite (solicitud → … → aprobado) funciona.
+- [ ] Trámite tipo **medidor bidireccional** → botón "Medidor llegó" marca y **avisa a
+      Cobranza** (KPI "Medidores → Cobranza" sube y se registra en la bitácora del proyecto).
 
 ### Asistente IA
 - [ ] La **burbuja flotante** aparece en todas las pantallas (no en la vista Asistente).

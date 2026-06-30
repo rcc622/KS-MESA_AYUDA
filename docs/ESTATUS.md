@@ -10,6 +10,40 @@
 
 ---
 
+## 2026-07-01 (AFK) · Randall (AFK) + Claude · Fase 2 (import inteligente) + Fase 3 (módulo CFE)
+
+Randall dejó AFK mode: construí **Fase 2 e Fase 3** para que las revise. También se
+reordenó el roadmap: el chat del cliente pasó a **Fase 4** y la nueva **Fase 3 = módulo
+CFE**. Todo compila (build OK) y lint sin errores. Respaldo previo:
+`backup/main-2026-06-30-fase2-3`.
+
+**Qué se construyó:**
+- **Fase 2 · Importación inteligente:** botón **🪄 "Formatear con IA"** en el import.
+  Para Excels con columnas arbitrarias, la IA (Llama/Qwen) propone el mapeo al esquema
+  KENET y el humano lo revisa antes de importar. Backend `ia`: nueva tarea
+  `mapear_columnas` (responde JSON). Front: `lib/ia.js` `mapearColumnasIA` + flujo en
+  `VistaE_Import.jsx`.
+- **Fase 3 · Módulo CFE / Gestoría:** nueva tabla `cfe_tramites` (`sql/migracion_cfe.sql`,
+  con RLS), API (`getTramitesCFE`/`crearTramiteCFE`/`actualizarTramiteCFE`), vista
+  `VistaCFE.jsx` (KPIs, alta, cambio de estado, filtros). El switcher de módulos ya
+  habilita **CFE / Gestoría**. Al marcar **"medidor bidireccional llegó"** se dispara la
+  **alerta a Cobranza** (bandera `cobranza_alertada` + bitácora "ya se puede cobrar").
+- Docs: roadmap reordenado (Fase 3 CFE, Fase 4 cliente) en README y BASES; guía de devs
+  con QA de ambas fases.
+
+**⚠️ Para activarlas (Randall, mañana):**
+1. **Fase 2:** **redeplegar la función `ia`** (trae la tarea `mapear_columnas`). Te
+   mandé/está el `index.ts` actualizado; o desde compu: `supabase functions deploy ia`.
+2. **Fase 3:** correr **`sql/migracion_cfe.sql`** en Supabase (crea la tabla + RLS).
+   Mientras no se corra, el módulo CFE muestra un aviso de "falta la tabla".
+
+**Cómo probar (después de los 2 pasos):**
+- Import: sube un Excel con columnas raras → 🪄 Formatear con IA → revisa el mapeo → importa.
+- CFE: switcher → CFE/Gestoría → "+ Nuevo trámite" (tipo medidor bidireccional) →
+  "Medidor llegó → avisar a Cobranza" → verifica el KPI y la bitácora del proyecto.
+
+---
+
 ## 2026-06-30 (cierre) · Randall + Claude · ✅ Asistente IA en vivo (Llama + Qwen)
 
 Cierre del día. La función `ia` **ya está desplegada y funcionando** con los dos motores

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { upsertProyectos, agregarBitacora, mensajeError } from '../lib/api';
+import { mapearColumnasIA } from '../lib/ia';
 
 const MAX_FILE_SIZE  = 5 * 1024 * 1024; // 5 MB
 const MAX_FILAS      = 500;
@@ -86,9 +87,13 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   const [etapa, setEtapa] = useState('seleccion');
   const [drag, setDrag] = useState(false);
   const [filas, setFilas] = useState([]);
+  const [filasRaw, setFilasRaw] = useState([]);     // filas con encabezados ORIGINALES (para IA)
   const [validaciones, setValidaciones] = useState([]);
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [mapeando, setMapeando] = useState(false);  // IA mapeando columnas
+  const [mapeoIA, setMapeoIA] = useState(null);     // { columna_origen: campo_destino }
+  const [errorIA, setErrorIA] = useState('');
   const fileRef = useRef();
 
   const descargarPlantilla = async () => {
@@ -110,11 +115,13 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      let rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      rows = rows.map(r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; }); // normaliza encabezados
-      if (rows.length > MAX_FILAS) { alert(`El archivo tiene ${rows.length} filas. El límite es ${MAX_FILAS} por importación.`); return; }
+      const rowsRaw = XLSX.utils.sheet_to_json(ws, { defval: '' });  // encabezados ORIGINALES
+      if (rowsRaw.length > MAX_FILAS) { alert(`El archivo tiene ${rowsRaw.length} filas. El límite es ${MAX_FILAS} por importación.`); return; }
+      const rows = rowsRaw.map(r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; }); // normaliza encabezados
+      setFilasRaw(rowsRaw);
       setFilas(rows);
       setValidaciones(rows.map((r, i) => validarFila(r, i)));
+      setMapeoIA(null); setErrorIA('');
       setEtapa('preview');
     } catch (e) {
       alert('No se pudo leer el archivo: ' + (e?.message || e));
@@ -122,6 +129,36 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   };
 
   const handleDrop = (e) => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); };
+
+  // Fase 2 · Pide a la IA que mapee columnas arbitrarias al esquema KENET.
+  // La IA SOLO propone el mapeo; aquí lo aplicamos y el humano lo revisa antes de importar.
+  const formatearConIA = async () => {
+    if (!filasRaw.length) return;
+    setMapeando(true); setErrorIA('');
+    try {
+      const provider = localStorage.getItem('ks_ia_provider') || 'llama';
+      const columnas = Object.keys(filasRaw[0] || {});
+      const muestra = filasRaw.slice(0, 3);
+      const { mapping } = await mapearColumnasIA(columnas, muestra, { provider });
+      if (!mapping || !Object.keys(mapping).length) throw new Error('La IA no devolvió un mapeo. Intenta con otro motor o revisa el archivo.');
+      // Aplica el mapeo: arma filas nuevas con los nombres de campo canónicos.
+      const nuevas = filasRaw.map(r => {
+        const o = {};
+        for (const src in mapping) {
+          const dest = mapping[src];
+          if (dest && COLUMNAS.includes(dest)) o[dest] = r[src];
+        }
+        return o;
+      });
+      setFilas(nuevas);
+      setValidaciones(nuevas.map((r, i) => validarFila(r, i)));
+      setMapeoIA(mapping);
+    } catch (e) {
+      setErrorIA(e.message || 'No se pudo formatear con IA.');
+    } finally {
+      setMapeando(false);
+    }
+  };
 
   const filasValidas = validaciones.filter(v => v.valida).length;
   const filasConError = validaciones.filter(v => !v.valida).length;
@@ -147,7 +184,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
     }
   };
 
-  const reiniciar = () => { setArchivo(null); setFilas([]); setValidaciones([]); setEtapa('seleccion'); setResultado(null); };
+  const reiniciar = () => { setArchivo(null); setFilas([]); setFilasRaw([]); setValidaciones([]); setEtapa('seleccion'); setResultado(null); setMapeoIA(null); setErrorIA(''); };
 
   return (
     <>
@@ -205,6 +242,27 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
               <button className="btn btn-outline btn-sm" onClick={reiniciar}>← Cambiar archivo</button>
             </div>
             <div className="card-body">
+              <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#5B21B6', marginBottom: 4 }}>🪄 ¿Las columnas no cuadran?</div>
+                <div className="text-xs text-gray" style={{ marginBottom: 10 }}>
+                  Si tu archivo trae nombres de columna distintos (de Odoo, otro Excel, etc.), la IA puede
+                  mapearlos al formato KENET. <strong>Tú revisas el resultado antes de importar.</strong>
+                </div>
+                <button className="btn btn-sm" style={{ background: '#6B4E9B', color: 'white' }} onClick={formatearConIA} disabled={mapeando}>
+                  {mapeando ? 'Formateando con IA…' : '🪄 Formatear con IA'}
+                </button>
+                {errorIA && <div className="text-xs" style={{ color: 'var(--rojo)', marginTop: 8 }}>⚠️ {errorIA}</div>}
+                {mapeoIA && (
+                  <div style={{ marginTop: 10, background: 'white', borderRadius: 6, padding: '8px 10px', border: '1px solid #E9D5FF' }}>
+                    <div className="text-xs" style={{ fontWeight: 700, color: '#5B21B6', marginBottom: 4 }}>Mapeo propuesto (revísalo):</div>
+                    {Object.entries(mapeoIA).filter(([, d]) => d && COLUMNAS.includes(d)).map(([src, dest]) => (
+                      <div key={src} className="text-xs text-gray" style={{ marginBottom: 1 }}>
+                        <span style={{ color: 'var(--gris-texto)' }}>{src}</span> → <code>{dest}</code>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                 <div style={{ flex: 1, background: '#F0FBF4', border: '1px solid #86EFAC', borderRadius: 8, padding: '10px 14px', textAlign: 'center' }}>
                   <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--verde)' }}>{filasValidas}</div>

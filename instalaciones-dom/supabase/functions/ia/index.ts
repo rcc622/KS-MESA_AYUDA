@@ -236,6 +236,49 @@ async function correrOpenAICompat(
   return { reply: 'No pude completar la consulta (demasiados pasos).', usadas, provider: etiqueta };
 }
 
+// ── FASE 2: MAPEO INTELIGENTE DE COLUMNAS (importación) ──────────────────────
+// Dado un Excel "sucio" (columnas arbitrarias) + filas de muestra, propone cómo
+// mapear cada columna de origen a los campos del esquema KENET. NO escribe nada:
+// solo devuelve el mapeo para que el humano lo revise antes de importar.
+const CAMPOS_DESTINO = [
+  'folio (OBLIGATORIO)', 'folio_odoo', 'cliente (OBLIGATORIO)', 'telefono', 'direccion',
+  'zona (MTY/SLT/TRC/MVA)', 'fecha_agenda (YYYY-MM-DD)', 'paneles (entero)',
+  'panel_potencia_w', 'panel_marca', 'inversor_tipo (inversor|microinversor)',
+  'inversor_cantidad', 'inversor_capacidad_kw', 'inversor_marca', 'notas',
+];
+
+async function mapearColumnas(provider: string, columnas: string[], muestra: any[]) {
+  const usarQwen = provider === 'qwen';
+  const url = usarQwen ? QWEN_URL : GROQ_URL;
+  const model = usarQwen ? QWEN_MODEL : LLAMA_MODEL;
+  const key = (usarQwen ? Deno.env.get('QWEN_API_KEY') : null) || Deno.env.get('GROQ_API_KEY');
+  if (!key) throw new Error('Falta GROQ_API_KEY en Supabase.');
+
+  const sys = `Eres un asistente que mapea las columnas de un Excel arbitrario al esquema de importación de proyectos de KENET Solar. Campos DESTINO disponibles:\n- ${CAMPOS_DESTINO.join('\n- ')}\n\nDevuelve SOLO un objeto JSON con esta forma exacta:\n{"mapping": {"<columna_de_origen>": "<campo_destino_sin_paréntesis_o_null>"}, "notas": "una línea"}\nReglas: usa el nombre simple del campo destino (ej. "fecha_agenda", "inversor_tipo"). Si una columna de origen no corresponde a ningún campo, su valor es null. No inventes columnas que no estén en la lista de origen.`;
+  const userMsg = `Columnas de origen: ${JSON.stringify(columnas)}\nFilas de muestra (para entender el contenido): ${JSON.stringify(muestra)}\nDevuelve el JSON de mapeo.`;
+
+  const cuerpo: any = {
+    model,
+    messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
+    temperature: 0.1,
+    response_format: { type: 'json_object' },
+  };
+  if (url.includes('groq.com')) cuerpo.reasoning_format = 'hidden';
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  });
+  if (resp.status === 429) throw new Error('El motor de IA llegó a su límite por minuto. Espera ~30 segundos y reintenta.');
+  if (!resp.ok) { const txt = await resp.text(); throw new Error(`IA ${resp.status}: ${txt}`); }
+  const data = await resp.json();
+  const txt = data.choices?.[0]?.message?.content || '{}';
+  let parsed: any;
+  try { parsed = JSON.parse(txt); } catch { parsed = {}; }
+  return { mapping: parsed.mapping || {}, notas: parsed.notas || '', provider };
+}
+
 // ── HANDLER ──────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -261,6 +304,18 @@ Deno.serve(async (req) => {
     const body = await req.json();
     // Motores soportados: 'llama' y 'qwen' (ambos en Groq). 'llama' es el default.
     const provider = body?.provider === 'qwen' ? 'qwen' : 'llama';
+
+    // ── Tarea: MAPEO INTELIGENTE DE COLUMNAS (Fase 2, import) ────────────────
+    if (body?.tarea === 'mapear_columnas') {
+      const columnas = Array.isArray(body?.columnas) ? body.columnas.map(String).slice(0, 80) : [];
+      const muestra = Array.isArray(body?.muestra) ? body.muestra.slice(0, 5) : [];
+      if (!columnas.length) {
+        return new Response(JSON.stringify({ error: 'No se recibieron columnas de origen.' }), { status: 400, headers: { ...CORS, 'content-type': 'application/json' } });
+      }
+      const out = await mapearColumnas(provider, columnas, muestra);
+      return new Response(JSON.stringify(out), { headers: { ...CORS, 'content-type': 'application/json' } });
+    }
+
     const historial = Array.isArray(body?.messages) ? body.messages : [];
     // Sanea el historial: solo roles válidos y contenido string.
     const limpio = historial

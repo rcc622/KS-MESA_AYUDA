@@ -257,6 +257,33 @@ export async function upsertProyectos(rows) {
   return data;
 }
 
+// ── CFE / GESTORÍA ───────────────────────────────────────────
+export async function getTramitesCFE({ estado, tipo } = {}) {
+  let q = supabase
+    .from('cfe_tramites')
+    .select('*, proyecto:proyectos(folio,cliente,zona,maps_url), responsable:usuarios!cfe_tramites_responsable_id_fkey(id,nombre)')
+    .order('created_at', { ascending: false });
+  if (estado) q = q.eq('estado', estado);
+  if (tipo)   q = q.eq('tipo', tipo);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data;
+}
+
+export async function crearTramiteCFE(payload) {
+  requireRol('admin', 'pm_domestico', 'coordinador');
+  const { data, error } = await supabase.from('cfe_tramites').insert(payload).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function actualizarTramiteCFE(id, payload) {
+  requireRol('admin', 'pm_domestico', 'coordinador');
+  const { data, error } = await supabase.from('cfe_tramites').update(payload).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 // ── SEMANAS disponibles para selector de cortes ──────────────
 export async function getSemanas() {
   const { data, error } = await supabase

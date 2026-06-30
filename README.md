@@ -111,7 +111,10 @@ para **PWA** y **app móvil nativa**. Detalle completo en
 - **Las llaves de IA nunca tocan el navegador** — viven como **secretos** en Supabase.
   Esto también es lo que habilita la app nativa (que se puede decompilar).
 - **Fases:** **1)** chat interno "Asistente" con datos reales · **2)** importación
-  inteligente ("Formatear con IA") · **3)** chat del cliente + Portal con RLS estricto.
+  inteligente ("Formatear con IA") · **3)** módulo **CFE / Gestoría** (trámites + alerta
+  de medidor bidireccional a Cobranza) · **4)** chat del cliente + Portal con RLS estricto.
+- **Motores IA (jun-2026):** Llama y Qwen en Groq (Claude desactivado para no usar la
+  cuenta personal de Claude).
 - **Móvil:** PWA (manifest + service worker, paso chico) y luego app nativa vía
   **Capacitor** (reusa el código React actual). La arquitectura ya apunta hacia allá.
 

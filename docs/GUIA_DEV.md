@@ -112,6 +112,10 @@ Marca lo que pruebes. Si algo falla, anótalo en **§4 Problemas conocidos**.
   recuerda la elección como sí lo hace la burbuja flotante). Inconsistencia menor de UX.
 - [NOTA] El build avisa que un chunk pesa >500 kB (xlsx/html2canvas). No rompe nada;
   a futuro se puede dividir con `import()` dinámico.
+- [ABIERTO] `npm run lint` (oxlint) marca 2 errores **rules-of-hooks** en
+  `VistaG_Usuarios.jsx` (líneas ~42 y ~53: hooks llamados condicionalmente) y varios
+  warnings menores en `VistaE_Import.jsx` / `VistaF_Reporte.jsx`. Pre-existentes;
+  conviene arreglar los de hooks (pueden causar bugs sutiles).
 - [MANEJADO] Motor **Llama** puede dar 429 (Groq plan gratis: 12k tokens/min). La Edge
   Function ahora **reintenta 1 vez** y, si persiste, muestra mensaje claro ("espera ~30s
   o cambia a Claude"). Para uso pesado: poner llave de Claude o subir Groq a Dev Tier.

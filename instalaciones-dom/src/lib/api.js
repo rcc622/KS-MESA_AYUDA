@@ -188,6 +188,25 @@ export async function crearUsuarioPerfil(payload) {
   return data;
 }
 
+// Crea la cuenta de acceso (Supabase Auth) y el perfil en `usuarios` en un
+// solo paso, vía la Edge Function `crear-usuario` (requiere la service_role
+// key, que solo vive en el backend). Evita que el admin tenga que entrar a
+// Supabase → Authentication → Users manualmente.
+export async function crearUsuarioConCuenta({ nombre, email, password, rol, zona }) {
+  requireRol('admin');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/crear-usuario`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, rol, zona: zona || null }),
+  });
+  const json = await resp.json();
+  if (!resp.ok || !json.ok) throw new Error(json.error || 'No se pudo crear el usuario.');
+  return json.usuario;
+}
+
 export async function actualizarUsuarioPerfil(id, payload) {
   requireRol('admin');
   const { data, error } = await supabase.from('usuarios').update(payload).eq('id', id).select().single();

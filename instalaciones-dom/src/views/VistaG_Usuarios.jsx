@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTodosUsuarios, crearUsuarioPerfil, actualizarUsuarioPerfil, mensajeError } from '../lib/api';
+import { getTodosUsuarios, crearUsuarioConCuenta, actualizarUsuarioPerfil, mensajeError } from '../lib/api';
 import Modal from '../components/Modal';
 
 const ROLES = [
@@ -17,7 +17,15 @@ const ROL_BADGE = {
   instalador:   { bg: '#F0FBF4', color: '#2E9E5B' },
 };
 
-const FORM_VACIO = { nombre: '', email: '', rol: 'pm_domestico', zona: 'MTY', activo: true };
+const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'pm_domestico', zona: 'MTY', activo: true };
+
+// Genera una contraseña temporal legible (el usuario puede cambiarla después)
+function generarPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let pass = '';
+  for (let i = 0; i < 10; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+  return pass;
+}
 
 export default function VistaG_Usuarios({ usuarioActual }) {
   const [usuarios, setUsuarios] = useState([]);
@@ -59,10 +67,10 @@ export default function VistaG_Usuarios({ usuarioActual }) {
   };
 
   const handleCrear = async () => {
-    if (!form.nombre || !form.email) return;
+    if (!form.nombre || !form.email || !form.password) return;
     setGuardando(true);
     try {
-      await crearUsuarioPerfil({ ...form, zona: form.zona || null });
+      await crearUsuarioConCuenta(form);
       setModalCrear(false);
       setForm(FORM_VACIO);
       cargar();
@@ -177,10 +185,6 @@ export default function VistaG_Usuarios({ usuarioActual }) {
           </div>
         )}
 
-        <div style={{ marginTop: 20, padding: '12px 16px', background: '#EFF6FF', borderRadius: 8, border: '1px solid #BFDBFE', fontSize: 12, color: '#1E40AF' }}>
-          <strong>ℹ️ Credenciales de acceso:</strong> Para que un usuario pueda iniciar sesión, crea su cuenta en{' '}
-          <strong>Supabase → Authentication → Users → Add user</strong> con el mismo correo. El perfil aquí controla su rol y permisos dentro de la plataforma.
-        </div>
       </div>
 
       {/* Modal: crear usuario */}
@@ -191,8 +195,8 @@ export default function VistaG_Usuarios({ usuarioActual }) {
         footer={
           <>
             <button className="btn btn-outline" onClick={() => setModalCrear(false)}>Cancelar</button>
-            <button className="btn btn-ambar" onClick={handleCrear} disabled={!form.nombre || !form.email || guardando}>
-              {guardando ? 'Guardando…' : 'Crear usuario'}
+            <button className="btn btn-ambar" onClick={handleCrear} disabled={!form.nombre || !form.email || !form.password || guardando}>
+              {guardando ? 'Creando…' : 'Crear usuario'}
             </button>
           </>
         }
@@ -204,6 +208,27 @@ export default function VistaG_Usuarios({ usuarioActual }) {
         <div className="form-group">
           <label>Correo electrónico</label>
           <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="juan@kenetsolar.com" required />
+        </div>
+        <div className="form-group">
+          <label>Contraseña temporal</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              placeholder="Mínimo 8 caracteres"
+              minLength={8}
+              required
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm(f => ({ ...f, password: generarPassword() }))}>
+              Generar
+            </button>
+          </div>
+          {form.password && (
+            <div className="text-xs" style={{ color: 'var(--gris-secundario)', marginTop: 4 }}>
+              Cópiala y compártesela al usuario — no se vuelve a mostrar después de crear la cuenta.
+            </div>
+          )}
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -219,9 +244,6 @@ export default function VistaG_Usuarios({ usuarioActual }) {
               {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
             </select>
           </div>
-        </div>
-        <div style={{ padding: '10px 12px', background: '#FEF9C3', borderRadius: 6, fontSize: 11, color: '#854D0E', borderLeft: '3px solid #EAB308' }}>
-          <strong>Recuerda:</strong> Después de crear el perfil, ve a <strong>Supabase → Authentication → Users → Add user</strong> y registra el mismo correo con una contraseña temporal para que el usuario pueda iniciar sesión.
         </div>
       </Modal>
 

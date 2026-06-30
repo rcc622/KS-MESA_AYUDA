@@ -10,6 +10,21 @@
 
 ---
 
+## 2026-06-30 (noche, cont.) · Pablo + Claude · ✅ UX: estado "Calendar conectado" visible
+
+Antes, el botón "📅 Conectar Google Calendar" en "Mis instalaciones" se mostraba siempre, aunque el instalador ya hubiera conectado su cuenta — confuso. Ahora el botón cambia a un badge **"✅ Calendar conectado"** cuando el usuario ya tiene su `google_refresh_token` guardado, y al terminar el flujo OAuth se detecta el cierre del popup y se refresca el estado solo (sin recargar la página).
+
+**Qué se construyó:**
+- `App.jsx`: el objeto `usuarioActual` ahora incluye `google_refresh_token`; se agregó `refrescarUsuarioActual()` (re-fetch del usuario) pasada como prop a las vistas.
+- `lib/gcal.js`: `conectarGoogleCalendar()` ahora devuelve la referencia de la ventana del popup de OAuth.
+- `VistaF_Reporte.jsx`: detecta `usuarioActual?.google_refresh_token` → muestra badge verde "Calendar conectado" en vez del botón; si no está conectado, el botón muestra "⏳ Conectando…" mientras se autoriza y se actualiza solo al cerrar el popup.
+
+**Estado:** build y lint OK, push hecho a `main`.
+
+**Cómo probar:** entra como instalador con cuenta ya conectada (ej. Pablo) → debe verse el badge verde, no el botón. Con un instalador sin conectar, dale clic, autoriza en la ventana de Google, ciérrala (o se cierra sola) → el badge debe aparecer sin recargar la página.
+
+---
+
 ## 2026-06-30 (noche) · Pablo + Claude · ✅ Campos Vendedor/Correo cliente + formato de evento en Calendar
 
 Se mejoró el evento de Google Calendar para que tenga el mismo formato que ya se usa en WhatsApp (paneles, inversor, ubicación, etc.) y se agregaron dos campos nuevos al proyecto: **Vendedor** y **Correo del cliente**.

@@ -196,9 +196,9 @@ async function correrOpenAICompat(
 
   for (let i = 0; i < MAX_ITERACIONES; i++) {
     const cuerpo: any = { model, messages, tools, tool_choice: 'auto', temperature: 0.3 };
-    // Modelos "de razonamiento" en Groq (ej. Qwen3) devuelven su cadena de pensamiento;
-    // 'hidden' la oculta para que la respuesta salga limpia. Inofensivo en otros modelos.
-    if (url.includes('groq.com')) cuerpo.reasoning_format = 'hidden';
+    // Solo Qwen (modelo de razonamiento en Groq) acepta reasoning_format; 'hidden' oculta
+    // su cadena de pensamiento. OJO: Llama NO lo soporta y devuelve 400 si se le manda.
+    if (url.includes('groq.com') && etiqueta === 'qwen') cuerpo.reasoning_format = 'hidden';
     const payload = JSON.stringify(cuerpo);
     const opts = { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: payload };
     let resp = await fetch(url, opts);
@@ -263,7 +263,8 @@ async function mapearColumnas(provider: string, columnas: string[], muestra: any
     temperature: 0.1,
     response_format: { type: 'json_object' },
   };
-  if (url.includes('groq.com')) cuerpo.reasoning_format = 'hidden';
+  // Solo Qwen acepta reasoning_format (Llama devuelve 400 si se le manda).
+  if (url.includes('groq.com') && usarQwen) cuerpo.reasoning_format = 'hidden';
 
   const resp = await fetch(url, {
     method: 'POST',

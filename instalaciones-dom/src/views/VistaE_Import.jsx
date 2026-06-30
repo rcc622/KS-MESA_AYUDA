@@ -1,90 +1,87 @@
 import { useState, useRef } from 'react';
 import { upsertProyectos, agregarBitacora, mensajeError } from '../lib/api';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
-const MAX_FILAS     = 500;
-const ZONAS_VALIDAS = ['MTY', 'SLT', 'TRC', 'MVA'];
+const MAX_FILE_SIZE  = 5 * 1024 * 1024; // 5 MB
+const MAX_FILAS      = 500;
+const WATTS_POR_PANEL = 600;
+const ZONAS = ['MTY', 'SLT', 'TRC', 'MVA'];
 
-// Parseo CSV robusto: maneja campos entre comillas con comas adentro
-const parsearCSV = (texto) => {
-  const parsearLinea = (linea) => {
-    const campos = [];
-    let actual = '';
-    let dentroComillas = false;
-    for (let i = 0; i < linea.length; i++) {
-      const c = linea[i];
-      if (c === '"') {
-        if (dentroComillas && linea[i + 1] === '"') { actual += '"'; i++; }
-        else dentroComillas = !dentroComillas;
-      } else if (c === ',' && !dentroComillas) {
-        campos.push(actual.trim());
-        actual = '';
-      } else {
-        actual += c;
-      }
-    }
-    campos.push(actual.trim());
-    return campos;
-  };
-
-  const lineas = texto.trim().split(/\r?\n/);
-  const cabeceras = parsearLinea(lineas[0]).map(h => h.toLowerCase().trim());
-  return lineas.slice(1)
-    .filter(l => l.trim())
-    .map(linea => {
-      const vals = parsearLinea(linea);
-      return Object.fromEntries(cabeceras.map((h, i) => [h, vals[i] ?? '']));
-    });
+// Columnas de la plantilla (mismas que el formulario, EXCEPTO el link de Maps que es manual).
+const COLUMNAS = [
+  'folio', 'folio_odoo', 'cliente', 'telefono', 'direccion', 'zona', 'fecha_agenda',
+  'paneles', 'panel_potencia_w', 'panel_marca',
+  'inversor_tipo', 'inversor_cantidad', 'inversor_capacidad_kw', 'inversor_marca', 'notas',
+];
+const EJEMPLO = {
+  folio: 'MY-2026-0101', folio_odoo: 'S57443', cliente: 'Juan Pérez', telefono: '8112345678',
+  direccion: 'Calle Falsa 123, Monterrey N.L.', zona: 'MTY', fecha_agenda: '2026-07-10',
+  paneles: 12, panel_potencia_w: 600, panel_marca: 'Trina',
+  inversor_tipo: 'inversor', inversor_cantidad: 1, inversor_capacidad_kw: 6, inversor_marca: 'Growatt',
+  notas: 'Ejemplo — borra esta fila antes de importar',
 };
 
-// Elimina prefijos que disparan fórmulas en Excel/Sheets
-const sanitizar = (val) => {
-  if (typeof val !== 'string') return val;
-  return val.replace(/^[=+\-@\t\r]+/, '').slice(0, 500);
+// Anti-inyección de fórmulas (=, +, -, @) + recorte de longitud
+const sanitizar = (v, max = 500) => {
+  if (v === '' || v == null) return null;
+  const s = String(v).replace(/^[=+\-@\t\r]+/, '').trim().slice(0, max);
+  return s === '' ? null : s;
+};
+const fechaISO = (v) => {
+  if (v === '' || v == null) return null;
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})$/); // DD/MM/YYYY
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  const d = new Date(s);
+  return isNaN(d) ? null : d.toISOString().slice(0, 10);
 };
 
 const validarFila = (r, idx) => {
   const errores = [];
-
-  if (!r.folio_odoo?.trim())
-    errores.push('folio_odoo vacío');
-  else if (r.folio_odoo.length > 100)
-    errores.push('folio_odoo excede 100 caracteres');
-
-  if (!r.cliente?.trim())
-    errores.push('cliente vacío');
-  else if (r.cliente.length > 255)
-    errores.push('cliente excede 255 caracteres');
-
-  if (r.zona && !ZONAS_VALIDAS.includes(r.zona.trim().toUpperCase()))
-    errores.push(`zona inválida (válidas: ${ZONAS_VALIDAS.join(', ')})`);
-
-  if (r.paneles) {
-    const n = parseInt(r.paneles);
-    if (isNaN(n) || n < 1 || n > 999)
-      errores.push('paneles debe ser un número entre 1 y 999');
-  }
-
-  if (r.kw) {
-    const n = parseFloat(r.kw);
-    if (isNaN(n) || n < 0.1 || n > 500)
-      errores.push('kw debe estar entre 0.1 y 500');
-  }
-
-  if (r.fecha_agenda && !/^\d{4}-\d{2}-\d{2}$/.test(r.fecha_agenda.trim()))
-    errores.push('fecha_agenda debe ser YYYY-MM-DD');
-
-  if (r.direccion && r.direccion.length > 500)
-    errores.push('direccion excede 500 caracteres');
-
-  if (r.notas && r.notas.length > 1000)
-    errores.push('notas excede 1000 caracteres');
-
+  if (!sanitizar(r.folio)) errores.push('folio vacío');
+  else if (String(r.folio).length > 100) errores.push('folio excede 100 caracteres');
+  if (!sanitizar(r.cliente)) errores.push('cliente vacío');
+  else if (String(r.cliente).length > 255) errores.push('cliente excede 255 caracteres');
+  const zona = sanitizar(r.zona)?.toUpperCase();
+  if (zona && !ZONAS.includes(zona)) errores.push(`zona inválida (válidas: ${ZONAS.join(', ')})`);
+  if (r.paneles) { const n = parseInt(r.paneles); if (isNaN(n) || n < 1 || n > 999) errores.push('paneles 1–999'); }
+  if (r.inversor_cantidad) { const n = parseInt(r.inversor_cantidad); if (isNaN(n) || n < 0 || n > 99) errores.push('cantidad de inversor inválida'); }
+  const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
+  if (tipo && !['inversor', 'microinversor'].includes(tipo)) errores.push("inversor_tipo: 'inversor' o 'microinversor'");
+  if (r.fecha_agenda && !fechaISO(r.fecha_agenda)) errores.push('fecha_agenda inválida (usa YYYY-MM-DD)');
+  if (r.direccion && String(r.direccion).length > 500) errores.push('direccion excede 500 caracteres');
+  if (r.notas && String(r.notas).length > 1000) errores.push('notas excede 1000 caracteres');
   return { fila: idx + 1, errores, valida: errores.length === 0 };
 };
 
+const mapear = (r) => {
+  const paneles = r.paneles ? parseInt(r.paneles) : null;
+  const zona = sanitizar(r.zona)?.toUpperCase();
+  const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
+  return {
+    folio: sanitizar(r.folio, 100),
+    folio_odoo: sanitizar(r.folio_odoo, 100),
+    cliente: sanitizar(r.cliente, 255),
+    telefono: sanitizar(r.telefono, 50),
+    direccion: sanitizar(r.direccion, 500),
+    zona: ZONAS.includes(zona) ? zona : null,
+    fecha_agenda: fechaISO(r.fecha_agenda),
+    paneles,
+    kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,
+    panel_potencia_w: r.panel_potencia_w ? parseInt(r.panel_potencia_w) : null,
+    panel_marca: sanitizar(r.panel_marca, 100),
+    inversor_tipo: tipo === 'microinversor' ? 'microinversor' : (tipo === 'inversor' ? 'inversor' : null),
+    inversor_cantidad: r.inversor_cantidad ? parseInt(r.inversor_cantidad) : null,
+    inversor_capacidad_kw: r.inversor_capacidad_kw ? parseFloat(r.inversor_capacidad_kw) : null,
+    inversor_marca: sanitizar(r.inversor_marca, 100),
+    notas: sanitizar(r.notas, 1000),
+    estatus: 'agendado',
+    dias_en_etapa: 0,
+  };
+};
+
 export default function VistaE_Import({ usuarioActual, setVista }) {
-  const [fuente, setFuente] = useState('csv');
   const [archivo, setArchivo] = useState(null);
   const [etapa, setEtapa] = useState('seleccion');
   const [drag, setDrag] = useState(false);
@@ -94,44 +91,37 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   const [resultado, setResultado] = useState(null);
   const fileRef = useRef();
 
-  const fuentes = [
-    { id: 'csv',    icon: '📄', label: 'CSV',           sub: 'Archivo .csv',           activo: true },
-    { id: 'xlsx',   icon: '📊', label: 'Excel / XLSX',  sub: 'Archivo .xlsx / .xls',   activo: false },
-    { id: 'sheets', icon: '🔗', label: 'Google Sheets', sub: 'Requiere OAuth',          activo: false },
-    { id: 'odoo',   icon: '⚙️', label: 'Odoo API',      sub: 'Fase 3',                  activo: false },
-  ];
+  const descargarPlantilla = async () => {
+    const XLSX = await import('xlsx');
+    const ws = XLSX.utils.json_to_sheet([EJEMPLO], { header: COLUMNAS });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Proyectos');
+    XLSX.writeFile(wb, 'Plantilla-importacion-KENET.xlsx');
+  };
 
-  const handleFile = (f) => {
+  const handleFile = async (f) => {
     if (!f) return;
     const ext = f.name.split('.').pop().toLowerCase();
-    if (ext !== 'csv') { alert('Selecciona un archivo .csv'); return; }
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) { alert('Sube un archivo .xlsx, .xls o .csv'); return; }
     if (f.size > MAX_FILE_SIZE) { alert('El archivo supera el límite de 5 MB'); return; }
     setArchivo(f);
-
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const rows = parsearCSV(e.target.result);
-        if (rows.length > MAX_FILAS) {
-          alert(`El archivo tiene ${rows.length} filas. El límite es ${MAX_FILAS} por importación.`);
-          return;
-        }
-        const vals = rows.map((r, i) => validarFila(r, i));
-        setFilas(rows);
-        setValidaciones(vals);
-        setEtapa('preview');
-      } catch {
-        alert('Error al parsear el CSV. Verifica el formato.');
-      }
-    };
-    reader.readAsText(f, 'UTF-8');
+    try {
+      const XLSX = await import('xlsx');
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      let rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      rows = rows.map(r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; }); // normaliza encabezados
+      if (rows.length > MAX_FILAS) { alert(`El archivo tiene ${rows.length} filas. El límite es ${MAX_FILAS} por importación.`); return; }
+      setFilas(rows);
+      setValidaciones(rows.map((r, i) => validarFila(r, i)));
+      setEtapa('preview');
+    } catch (e) {
+      alert('No se pudo leer el archivo: ' + (e?.message || e));
+    }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDrag(false);
-    handleFile(e.dataTransfer.files[0]);
-  };
+  const handleDrop = (e) => { e.preventDefault(); setDrag(false); handleFile(e.dataTransfer.files[0]); };
 
   const filasValidas = validaciones.filter(v => v.valida).length;
   const filasConError = validaciones.filter(v => !v.valida).length;
@@ -139,33 +129,15 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   const handleImportar = async () => {
     setImportando(true);
     try {
-      const payload = filas
-        .filter((_, i) => validaciones[i]?.valida)
-        .map(r => ({
-          folio:         r.folio        ? sanitizar(r.folio.trim())    : null,
-          folio_odoo:    sanitizar(r.folio_odoo.trim()),
-          cliente:       sanitizar(r.cliente.trim()),
-          zona:          r.zona         ? r.zona.trim().toUpperCase()  : null,
-          paneles:       r.paneles      ? parseInt(r.paneles)          : null,
-          kw:            r.kw           ? parseFloat(r.kw)             : null,
-          fecha_agenda:  r.fecha_agenda ? r.fecha_agenda.trim()        : null,
-          direccion:     r.direccion    ? sanitizar(r.direccion.trim()) : null,
-          notas:         r.notas        ? sanitizar(r.notas.trim())    : null,
-          estatus:       'agendado',
-          dias_en_etapa: 0,
-        }));
-
+      const payload = filas.filter((_, i) => validaciones[i]?.valida).map(mapear);
       const data = await upsertProyectos(payload);
-
       for (const p of data) {
         await agregarBitacora({
-          proyecto_id: p.id,
-          tipo: 'import',
-          descripcion: `Importado desde CSV — ${archivo.name}`,
+          proyecto_id: p.id, tipo: 'import',
+          descripcion: `Importado masivamente desde ${archivo.name}`,
           usuario_id: usuarioActual?.id ?? null,
         });
       }
-
       setResultado({ total: data.length, errores: filasConError, archivo: archivo.name });
       setEtapa('resultado');
     } catch (e) {
@@ -180,33 +152,32 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   return (
     <>
       <div className="page-header">
-        <div><h2>📤 Importar Proyectos</h2><div className="sub">Carga masiva por CSV o XLSX · Upsert por folio_odoo</div></div>
+        <div><h2>📤 Importar Proyectos</h2><div className="sub">Carga masiva con plantilla · XLSX o CSV · Upsert por folio</div></div>
       </div>
 
       <div className="page-body" style={{ maxWidth: 680 }}>
         <div className="card mb-16">
-          <div className="card-header"><h3>1. Selecciona la fuente</h3></div>
+          <div className="card-header"><h3>1. Descarga la plantilla</h3></div>
           <div className="card-body">
-            <div className="source-grid">
-              {fuentes.map(f => (
-                <div key={f.id} className={`source-card${fuente === f.id ? ' active' : ''}${!f.activo ? ' disabled' : ''}`} onClick={() => f.activo && setFuente(f.id)}>
-                  <div className="s-icon">{f.icon}</div>
-                  <div className="s-label">{f.label}</div>
-                  <div className="s-sub">{f.sub}</div>
-                  {!f.activo && <div className="soon-badge">Próximamente</div>}
-                </div>
-              ))}
+            <div className="text-sm text-gray" style={{ marginBottom: 12 }}>
+              Llena la plantilla (un renglón por instalación) y súbela. Trae las mismas columnas que el
+              formulario; el <strong>link de Google Maps se pone a mano</strong> después.
             </div>
-            <div style={{ fontSize: 12, color: 'var(--gris-secundario)', padding: '8px 12px', background: '#F9FAFB', borderRadius: 8 }}>
-              <strong>Columnas requeridas:</strong> <code>folio_odoo, cliente, zona</code> &nbsp;·&nbsp;
-              <strong>Opcionales:</strong> <code>folio, paneles, kw, fecha_agenda, direccion, notas</code>
+            <button className="btn btn-primary" onClick={descargarPlantilla}>⬇️ Descargar plantilla (.xlsx)</button>
+            <div style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 12px', marginTop: 12 }}>
+              💡 <strong>Usa XLSX (Excel), no CSV.</strong> El CSV suele dañar las <em>ñ</em> y los acentos; el XLSX los conserva bien.
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--gris-secundario)', padding: '8px 12px', background: '#F9FAFB', borderRadius: 8, marginTop: 10 }}>
+              <strong>Requeridas:</strong> <code>folio</code>, <code>cliente</code> &nbsp;·&nbsp;
+              <strong>Opcionales:</strong> folio_odoo, telefono, direccion, zona, fecha_agenda, paneles, panel_potencia_w, panel_marca, inversor_tipo, inversor_cantidad, inversor_capacidad_kw, inversor_marca, notas.
+              <br />El <strong>kWp se calcula solo</strong> (paneles × 600 W). Máx. 500 filas · 5 MB.
             </div>
           </div>
         </div>
 
         {etapa === 'seleccion' && (
           <div className="card mb-16">
-            <div className="card-header"><h3>2. Sube el archivo</h3></div>
+            <div className="card-header"><h3>2. Sube el archivo lleno</h3></div>
             <div className="card-body">
               <div
                 className={`drop-zone${drag ? ' dragover' : ''}`}
@@ -219,9 +190,10 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
                 <div className="fw-700 mb-8">Arrastra tu archivo aquí</div>
                 <div className="text-sm text-gray mb-16">o haz clic para seleccionarlo</div>
                 <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); fileRef.current.click(); }}>Seleccionar archivo</button>
-                <div className="text-xs text-gray mt-12">Formato: {fuente === 'csv' ? '.csv' : '.xlsx, .xls'}</div>
+                <div className="text-xs text-gray mt-12">Formatos: .xlsx · .xls · .csv</div>
               </div>
-              <input type="file" ref={fileRef} style={{ display: 'none' }} accept={fuente === 'csv' ? '.csv' : '.xlsx,.xls'} onChange={e => handleFile(e.target.files[0])} />
+              <input type="file" ref={fileRef} style={{ display: 'none' }} accept=".xlsx,.xls,.csv" onChange={e => handleFile(e.target.files[0])} />
+              <div className="text-xs text-gray" style={{ marginTop: 10 }}>Próximamente: Google Sheets y Odoo (fases siguientes).</div>
             </div>
           </div>
         )}
@@ -247,51 +219,43 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
               {filasConError > 0 && (
                 <div style={{ background: '#FFF4F4', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán:</div>
-                  {validaciones.filter(v => !v.valida).map(v => (
-                    <div key={v.fila} style={{ fontSize: 12, color: '#DC2626', marginBottom: 2 }}>
-                      Fila {v.fila}: {v.errores.join(' · ')}
-                    </div>
+                  {validaciones.filter(v => !v.valida).slice(0, 15).map(v => (
+                    <div key={v.fila} style={{ fontSize: 12, color: '#DC2626', marginBottom: 2 }}>Fila {v.fila}: {v.errores.join(' · ')}</div>
                   ))}
                 </div>
               )}
 
-              <div className="table-wrap" style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      {Object.keys(filas[0] || {}).slice(0, 5).map(h => <th key={h}>{h}</th>)}
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filas.slice(0, 20).map((r, i) => {
-                      const v = validaciones[i];
-                      return (
-                        <tr key={i} style={{ background: v?.valida ? 'transparent' : '#FFF4F4' }}>
-                          <td style={{ fontSize: 11, color: 'var(--gris-secundario)' }}>{i + 1}</td>
-                          {Object.values(r).slice(0, 5).map((val, j) => <td key={j} style={{ fontSize: 12 }}>{val}</td>)}
-                          <td style={{ fontSize: 11 }}>
-                            {v?.valida
-                              ? <span style={{ color: '#16A34A' }}>✓</span>
-                              : <span style={{ color: '#DC2626' }} title={v?.errores.join('\n')}>✗ {v?.errores[0]}</span>
-                            }
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {filas.length > 0 && (
+                <div className="table-wrap" style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
+                  <table>
+                    <thead><tr><th>#</th><th>folio</th><th>cliente</th><th>zona</th><th>paneles</th><th>Estado</th></tr></thead>
+                    <tbody>
+                      {filas.slice(0, 20).map((r, i) => {
+                        const v = validaciones[i];
+                        return (
+                          <tr key={i} style={{ background: v?.valida ? 'transparent' : '#FFF4F4' }}>
+                            <td style={{ fontSize: 11, color: 'var(--gris-secundario)' }}>{i + 1}</td>
+                            <td style={{ fontSize: 12 }}>{r.folio}</td>
+                            <td style={{ fontSize: 12 }}>{r.cliente}</td>
+                            <td style={{ fontSize: 12 }}>{r.zona}</td>
+                            <td style={{ fontSize: 12 }}>{r.paneles}</td>
+                            <td style={{ fontSize: 11 }}>{v?.valida ? <span style={{ color: '#16A34A' }}>✓</span> : <span style={{ color: '#DC2626' }} title={v?.errores.join('\n')}>✗ {v?.errores[0]}</span>}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <div style={{ fontSize: 11, color: 'var(--gris-secundario)', marginBottom: 16 }}>
-                ⚠️ La importación registra un evento en la bitácora de cada proyecto.
+                Cada proyecto importado registra un evento en su bitácora. Re-importar un mismo <code>folio</code> lo actualiza.
                 {filas.length > 20 && ` · Mostrando 20 de ${filas.length} filas.`}
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn btn-outline" onClick={reiniciar}>Cancelar</button>
                 <button className="btn btn-green" onClick={handleImportar} disabled={importando || filasValidas === 0}>
-                  {importando ? 'Importando…' : `✓ Importar ${filasValidas} fila${filasValidas !== 1 ? 's' : ''}`}
+                  {importando ? 'Importando…' : `✓ Importar ${filasValidas} proyecto(s)`}
                 </button>
               </div>
             </div>

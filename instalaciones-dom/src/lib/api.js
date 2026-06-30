@@ -251,7 +251,7 @@ export async function upsertProyectos(rows) {
   requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase
     .from('proyectos')
-    .upsert(rows, { onConflict: 'folio_odoo', ignoreDuplicates: false })
+    .upsert(rows, { onConflict: 'folio', ignoreDuplicates: false })   // folio es UNIQUE; folio_odoo no
     .select();
   if (error) throw error;
   return data;

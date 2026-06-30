@@ -33,11 +33,11 @@ const MAX_ITERACIONES = 6; // tope del loop de tool use (anti-bucle infinito)
 // Llama vía Groq:
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const LLAMA_MODEL = 'llama-3.3-70b-versatile';
-// Qwen vía proveedor compatible con OpenAI (por defecto Together.ai). El host y el
-// modelo se pueden cambiar con secretos QWEN_BASE_URL / QWEN_MODEL sin tocar el código
-// (ej. para usar OpenRouter o DashScope de Alibaba).
-const QWEN_URL = (Deno.env.get('QWEN_BASE_URL') || 'https://api.together.xyz/v1') + '/chat/completions';
-const QWEN_MODEL = Deno.env.get('QWEN_MODEL') || 'Qwen/Qwen2.5-72B-Instruct-Turbo';
+// Qwen: por defecto corre en GROQ (mismo proveedor que Llama) → reutiliza GROQ_API_KEY,
+// no necesitas otra llave. El host y el modelo se pueden cambiar con secretos
+// QWEN_BASE_URL / QWEN_MODEL sin tocar el código (ej. Together.ai u OpenRouter).
+const QWEN_URL = (Deno.env.get('QWEN_BASE_URL') || 'https://api.groq.com/openai/v1') + '/chat/completions';
+const QWEN_MODEL = Deno.env.get('QWEN_MODEL') || 'qwen/qwen3-32b'; // Qwen 3 32B en Groq
 
 // ── HERRAMIENTAS (esquema neutral, se traduce a cada proveedor) ──────────────
 // Todas son SOLO LECTURA en esta v1. Corren con el cliente Supabase del usuario,
@@ -251,7 +251,11 @@ async function correrOpenAICompat(
   const usadas: string[] = [];
 
   for (let i = 0; i < MAX_ITERACIONES; i++) {
-    const payload = JSON.stringify({ model, messages, tools, tool_choice: 'auto', temperature: 0.3 });
+    const cuerpo: any = { model, messages, tools, tool_choice: 'auto', temperature: 0.3 };
+    // Modelos "de razonamiento" en Groq (ej. Qwen3) devuelven su cadena de pensamiento;
+    // 'hidden' la oculta para que la respuesta salga limpia. Inofensivo en otros modelos.
+    if (url.includes('groq.com')) cuerpo.reasoning_format = 'hidden';
+    const payload = JSON.stringify(cuerpo);
     const opts = { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body: payload };
     let resp = await fetch(url, opts);
     // Límite por minuto (planes gratis): si topa, espera lo sugerido y reintenta UNA vez.
@@ -330,8 +334,9 @@ Deno.serve(async (req) => {
       if (!key) throw new Error('Falta el secreto GROQ_API_KEY en Supabase (para usar Llama).');
       salida = await correrOpenAICompat(supabase, limpio, system, key, GROQ_URL, LLAMA_MODEL, 'llama');
     } else if (provider === 'qwen') {
-      const key = Deno.env.get('QWEN_API_KEY');
-      if (!key) throw new Error('Falta el secreto QWEN_API_KEY en Supabase (para usar Qwen).');
+      // Qwen corre en Groq por defecto → usa GROQ_API_KEY si no hay QWEN_API_KEY aparte.
+      const key = Deno.env.get('QWEN_API_KEY') || Deno.env.get('GROQ_API_KEY');
+      if (!key) throw new Error('Falta QWEN_API_KEY o GROQ_API_KEY en Supabase (para usar Qwen).');
       salida = await correrOpenAICompat(supabase, limpio, system, key, QWEN_URL, QWEN_MODEL, 'qwen');
     } else {
       const key = Deno.env.get('ANTHROPIC_API_KEY');

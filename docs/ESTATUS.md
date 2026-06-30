@@ -26,7 +26,8 @@ commitearse en la sesión anterior (la vista completa del Asistente sí estaba b
 - Hook SessionStart quedó **síncrono** (decisión de Randall).
 
 **Pendiente / cómo probar:**
-- Poner `QWEN_API_KEY` en Supabase Secrets (llave de Together.ai) y **redeplegar `ia`**.
+- **Qwen NO necesita llave nueva**: corre en Groq (`qwen/qwen3-32b`) y reutiliza
+  `GROQ_API_KEY`. Solo **redeplegar `ia`**.
 - También falta `ANTHROPIC_API_KEY` (Claude) — opcional.
 - Probar: burbuja 💬 → selector **Qwen** → *"¿cómo vamos en general?"*. Comparar con Llama.
 - ⚠️ La función `ia` **debe redeplegarse** para tomar Qwen y el manejo de rate limit

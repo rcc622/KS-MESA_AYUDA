@@ -10,6 +10,24 @@
 
 ---
 
+## 2026-06-30 (noche, cont. 3) · Pablo + Claude · ✅ Orden por fecha en vista del instalador + formato evento Calendar
+
+Dos mejoras en esta sesión: la vista de instalaciones del instalador ahora ordena por fecha más próxima por defecto, y el evento de Google Calendar se ajustó para que su descripción coincida con el formato del mensaje de WhatsApp.
+
+**Qué se movió:**
+- `VistaF_Reporte.jsx`: lista de proyectos ordenada por `fecha_agenda` ascendente de forma predeterminada (más cercano primero). Proyectos sin fecha siempre al final. Botón toggle "📅 ↑ Más cercano / ↓ Más lejano" junto a "↺ Actualizar" para invertir el orden.
+- `supabase/functions/gcal-event/index.ts`: se eliminaron `Folio KENET`, `OV Odoo` y `Zona` de la descripción del evento. Se ajustaron los saltos de línea para que quede igual que el mensaje de WhatsApp (Correo → línea en blanco → Vendedor → línea en blanco → Nota).
+
+**Pendiente:**
+- Redesplegar la Edge Function `gcal-event` en Supabase dashboard (pegar el `index.ts` actualizado en Functions → gcal-event → Deploy).
+- Despliegue en Vercel se dispara automáticamente con el push.
+
+**Cómo probar:**
+- Vista instalador ("Mis instalaciones"): el proyecto con la fecha más cercana debe aparecer hasta arriba. El botón de orden alterna entre ascendente y descendente.
+- Crear un evento de Calendar en un proyecto con todos los campos llenos y verificar que la descripción no incluye Folio KENET, OV Odoo ni Zona.
+
+---
+
 ## 2026-06-30 (noche, cont. 2) · Pablo + Claude · ✅ Crear usuarios desde la plataforma (sin Supabase Auth manual)
 
 Antes, dar de alta un usuario nuevo requería dos pasos: crear el perfil en "Gestión de Usuarios" y luego entrar manualmente a Supabase → Authentication → Users → Add user con el mismo correo. Ahora todo se hace desde un solo formulario en la plataforma.

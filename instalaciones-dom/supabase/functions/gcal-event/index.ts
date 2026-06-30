@@ -85,11 +85,9 @@ function buildEventBody(proyecto: any) {
     inversorDetalle ? `Inversor: ${inversorDetalle}` : null,
     proyecto.correo_cliente ? `Correo: ${proyecto.correo_cliente}` : null,
     '',
-    `Folio KENET: ${proyecto.folio}`,
-    proyecto.folio_odoo ? `OV Odoo: ${proyecto.folio_odoo}` : null,
-    proyecto.zona ? `Zona: ${proyecto.zona}` : null,
     proyecto.vendedor ? `Vendedor: ${proyecto.vendedor}` : null,
-    proyecto.notas ? `\nNota: ${proyecto.notas}` : null,
+    '',
+    proyecto.notas ? `Nota: ${proyecto.notas}` : null,
   ].filter(s => s !== null).join('\n');
 
   return {

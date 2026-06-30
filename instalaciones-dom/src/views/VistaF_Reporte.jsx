@@ -59,6 +59,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
   const [respaldoEv, setRespaldoEv] = useState('');
   const [etapaActiva, setEtapaActiva] = useState('checklist');
   const [conectandoCal, setConectandoCal] = useState(false);
+  const [ordenFecha, setOrdenFecha] = useState('asc'); // 'asc' = más cercano primero
 
   const esInstalador = usuarioActual?.rol === 'instalador';
   const titulo = esInstalador ? 'Mis instalaciones' : 'Reporte Instalador';
@@ -104,6 +105,15 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
   useEffect(() => { cargar(); }, [cargar]);
 
   const proyecto = proyectos.find(p => p.id === proyectoId);
+
+  const proyectosOrdenados = [...proyectos].sort((a, b) => {
+    const fa = a.fecha_agenda || null;
+    const fb = b.fecha_agenda || null;
+    if (!fa && !fb) return 0;
+    if (!fa) return 1;  // sin fecha siempre al final
+    if (!fb) return -1;
+    return ordenFecha === 'asc' ? fa.localeCompare(fb) : fb.localeCompare(fa);
+  });
   const checksPasados = CHECKLIST.filter((_, i) => checks[i]).length;
   const pct = Math.round((checksPasados / CHECKLIST.length) * 100);
 
@@ -281,6 +291,13 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
                 </button>
               )
             )}
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setOrdenFecha(o => o === 'asc' ? 'desc' : 'asc')}
+              title={ordenFecha === 'asc' ? 'Más cercano primero · clic para invertir' : 'Más lejano primero · clic para invertir'}
+            >
+              📅 {ordenFecha === 'asc' ? '↑ Más cercano' : '↓ Más lejano'}
+            </button>
             <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
           </div>
         </div>
@@ -294,7 +311,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {proyectos.map(p => {
+                {proyectosOrdenados.map(p => {
                   const hoy = new Date().toISOString().slice(0, 10);
                   const conFecha = !!p.fecha_agenda;
                   const puedeIniciar = conFecha && p.fecha_agenda <= hoy;   // hay fecha y ya llegó el día

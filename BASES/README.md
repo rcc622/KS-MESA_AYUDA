@@ -42,6 +42,15 @@ las 5 pantallas (Admin/Gestor de Control de Vuelo, Soporte Técnico de Campo,
 CFE/Gestoría, Instalaciones, Portal del Cliente), el contraste **HOY vs CON Mesa de
 Control** y la **decisión solicitada** (aprobar arranque F0, piloto R2, motor).
 
+### 4. `Roadmap_IA_y_Plataforma.md`
+**Plan de acción de IA + escalabilidad (jun-2026).** Hoja de ruta técnica para volver
+la plataforma **inteligente con IA** y dejarla lista para **PWA** y **app móvil nativa**.
+Decisiones que no se rompen: backend de IA en **Supabase Edge Functions** (no Vercel),
+proveedor **agnóstico** (Claude `claude-opus-4-8` + Llama vía Groq, estrategia híbrida),
+**llaves siempre server-side**, y las **3 fases** (1 chat interno con datos · 2 import
+inteligente · 3 chat del cliente + Portal con RLS). Es el *delta* de IA sobre lo ya
+construido en `instalaciones-dom/`.
+
 ---
 
 ## Documentos relacionados (en otras carpetas)

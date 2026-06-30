@@ -88,11 +88,35 @@ Corre en **Supabase → SQL Editor**, en este orden:
 
 ---
 
+## 🤖 Roadmap de IA y escalabilidad (próximos milestones)
+
+Plan de acción acordado para volver la plataforma **inteligente con IA** y dejarla lista
+para **PWA** y **app móvil nativa**. Detalle completo en
+**`BASES/Roadmap_IA_y_Plataforma.md`**. Lo esencial:
+
+- **Backend de IA = Supabase Edge Functions** (no Vercel Functions): vive pegado a los
+  datos → menos latencia, **sin costo de egress**, y hereda **Auth/RLS** (clave para el
+  scoping del cliente). Vercel se queda sirviendo el front.
+- **Proveedor agnóstico, estrategia híbrida:** **Claude** (`claude-opus-4-8`) para lo
+  difícil (*tool use*, mapeo de datos sucios, razonamiento) + **Llama** hospedado (Groq/
+  Together, **no GPU propia**) para lo masivo y barato. Se cambia con una línea.
+- **Las llaves de IA nunca tocan el navegador** — viven como **secretos** en Supabase.
+  Esto también es lo que habilita la app nativa (que se puede decompilar).
+- **Fases:** **1)** chat interno "Asistente" con datos reales · **2)** importación
+  inteligente ("Formatear con IA") · **3)** chat del cliente + Portal con RLS estricto.
+- **Móvil:** PWA (manifest + service worker, paso chico) y luego app nativa vía
+  **Capacitor** (reusa el código React actual). La arquitectura ya apunta hacia allá.
+
+> Principio rector: **separar el cerebro (datos + lógica + IA, en el backend) de la cara
+> (React).** Eso permite web, PWA y nativo sin reescribir, y cambiar de IA sin dolor.
+
+---
+
 ## 📚 BASES/ y Tools/
 
 - **`BASES/`** — documentos de contexto/diseño (HANDOFF maestro, arquitectura del Trouble
-  Ticket System, presentación de la dinámica). Cárgalos como contexto al inicio de un chat
-  con Claude. Ver `BASES/README.md`.
+  Ticket System, presentación de la dinámica, **Roadmap de IA y Plataforma**). Cárgalos
+  como contexto al inicio de un chat con Claude. Ver `BASES/README.md`.
 - **`Tools/`** — guías de herramientas opcionales que cada quien instala en su entorno
   (ponytail/caveman para tokens, markitdown para convertir docs a Markdown).
 

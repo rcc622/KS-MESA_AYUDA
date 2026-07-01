@@ -80,3 +80,24 @@ del día a día y pasa a **supervisar excepciones y casos difíciles**.
 > **Nota:** este reparto post-TOKU es una **proyección** basada en cómo funciona la
 > automatización de pagos + el proceso descrito. El detalle final depende de las capacidades
 > de TOKU que se configuren y de lo que Odoo exponga por API.
+
+---
+
+## 4. Contrato de datos para TOKU (para la integración de Pablo)
+
+El **módulo de Cobranza ya está listo** para mostrar morosos; solo necesita que la
+integración de TOKU/Odoo **actualice estos campos en `proyectos`** (migración
+`sql/migracion_cobranza.sql`). La clasificación en la UI se hace sola a partir de `meses_atraso`.
+
+| Campo (`proyectos`) | Tipo | Qué pone TOKU/Odoo |
+|---|---|---|
+| `meses_atraso` | int | Nº de mensualidades vencidas sin pagar (0=al corriente). **Rige la clasificación:** 1→M1, 2→M2, 3→M3, 4+→judicial. |
+| `saldo_vencido` | numeric | Monto vencido total. |
+| `pena_convencional` | numeric | Pena acumulada ($500 desde el día 11 del 1er mes). |
+| `proxima_fecha_pago` | date | Próximo vencimiento. |
+| `cobranza_actualizada_en` | timestamptz | Cuándo TOKU actualizó (auditoría). |
+| (existentes) `instalado_cobrado`, `medidor_pagado`, `anticipo_pagado` | bool | Hitos de cobro (enganche / restante / anticipo). |
+
+**Flujo esperado:** TOKU/Odoo → (webhook o job) → escribe estos campos por proyecto
+(match por `folio_odoo` = OV de Odoo `S#####`, que es la llave financiera). El front lee y
+clasifica. Ningún monto se teclea en la plataforma.

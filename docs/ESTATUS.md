@@ -1,5 +1,26 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 6) · Randall + Claude · Sección de Morosos en Cobranza (lista para TOKU)
+
+Se construyó la **sección de Morosos** del módulo de Cobranza con la política oficial de KENET,
+**lista para que la pueble la API de TOKU**. También quedó documentado el proceso de cobro y
+el reparto de responsabilidades hoy vs con TOKU.
+
+**Qué se movió:**
+- `sql/migracion_cobranza.sql` (nuevo): campos en `proyectos` que TOKU/Odoo actualizarán —
+  `meses_atraso`, `saldo_vencido`, `pena_convencional`, `proxima_fecha_pago`, `cobranza_actualizada_en`.
+- `VistaCobranza.jsx`: KPI **Morosos** (+ saldo vencido) y sección con buckets **Moroso 1 / 2 / 3
+  / Cobranza judicial** (clasifica por `meses_atraso`). Vacía hasta conectar TOKU; se puede
+  probar fijando valores en un proyecto (snippet en la migración).
+- `BASES/Procesos/Cobranza_morosidad_y_responsabilidades.md`: política de morosos, responsabilidades
+  hoy vs con TOKU, y el **contrato de datos para TOKU** (qué campos poblar, match por `folio_odoo`).
+
+**Pendiente Randall (rápido):** correr `sql/migracion_cobranza.sql`.
+**Para TOKU (Pablo):** poblar esos campos por proyecto (match por OV de Odoo `S#####`).
+
+---
+
+
 ## 2026-07-01 (cont. 5) · Randall + Claude · Tablero de pendientes formalizado (Pablo / Randall)
 
 Se creó **`docs/PENDIENTES.md`** con los pendientes claros de cada quien (Pablo lee ese

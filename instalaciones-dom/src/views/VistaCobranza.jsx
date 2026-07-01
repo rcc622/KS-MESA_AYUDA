@@ -57,9 +57,16 @@ export default function VistaCobranza({ usuarioActual }) {
   const cobrados = engancheAlcanzado.filter(p => p.instalado_cobrado).length + restanteAlcanzado.filter(p => p.medidor_pagado).length;
   const efectividad = alcanzados ? Math.round((cobrados / alcanzados) * 100) : 0;
 
-  // Atrasados (proxy): pendientes de cobro con más de 3 días desde el hito.
-  const atrasados = engancheXCobrar.filter(p => (diasDesde(p.fecha_instalacion) ?? 0) > 3).length
-    + restanteXCobrar.filter(p => (diasDesde(medidorLlegado.get(p.id)) ?? 0) > 3).length;
+  // Morosos (poblado por TOKU/Odoo): meses_atraso = mensualidades vencidas sin pagar.
+  const morosos = proyectos.filter(p => (p.meses_atraso ?? 0) >= 1);
+  const bucketsMoroso = [
+    { k: 1, l: 'Moroso 1', d: '1er mes · pena $500', bg: '#FEF3C7', color: '#92400E', test: p => p.meses_atraso === 1 },
+    { k: 2, l: 'Moroso 2', d: '2do mes', bg: '#FFEDD5', color: '#9A3412', test: p => p.meses_atraso === 2 },
+    { k: 3, l: 'Moroso 3', d: '3er mes', bg: '#FEE2E2', color: '#991B1B', test: p => p.meses_atraso === 3 },
+    { k: 'j', l: 'Cobranza judicial', d: '4to mes en adelante', bg: '#F3E8FF', color: '#6B21A8', test: p => p.meses_atraso >= 4 },
+  ];
+  const saldoVencido = morosos.reduce((s, p) => s + (Number(p.saldo_vencido) || 0), 0);
+  const fmt = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const efColor = efectividad >= 80 ? 'var(--verde)' : efectividad >= 50 ? 'var(--ambar)' : 'var(--rojo)';
 
@@ -92,7 +99,7 @@ export default function VistaCobranza({ usuarioActual }) {
           <div className="stat-card"><div className="stat-val" style={{ color: efColor }}>{efectividad}%</div><div className="stat-label">Efectividad de cobranza</div></div>
           <div className="stat-card ambar"><div className="stat-val">{engancheXCobrar.length}</div><div className="stat-label">Enganche por cobrar</div></div>
           <div className="stat-card ambar"><div className="stat-val">{restanteXCobrar.length}</div><div className="stat-label">Restante por cobrar</div></div>
-          <div className="stat-card rojo"><div className="stat-val">{atrasados}</div><div className="stat-label">Atrasados (&gt;3 días)</div></div>
+          <div className="stat-card rojo"><div className="stat-val">{morosos.length}</div><div className="stat-label">Morosos{saldoVencido > 0 ? ` · ${fmt(saldoVencido)} vencido` : ''}</div></div>
         </div>
 
         {/* AGENDA CONFIRMADA */}
@@ -138,12 +145,39 @@ export default function VistaCobranza({ usuarioActual }) {
 
         {/* MOROSOS — pendiente de definir reglas */}
         <div className="card">
-          <div className="card-header"><h3>⏳ Morosos (1 · 2 · 3)</h3></div>
+          <div className="card-header"><h3>⏳ Morosos {morosos.length > 0 ? `(${morosos.length})` : ''}</h3></div>
           <div className="card-body">
-            <div className="text-sm text-gray">
-              Los niveles de morosidad (1, 2, 3) se definirán con el KPI que enviará Randall y se conectarán con
-              <strong> Odoo / TOKU</strong> (montos y fechas de pago reales). Por ahora esta sección es un marcador.
-            </div>
+            {morosos.length === 0 ? (
+              <div className="text-sm text-gray">
+                Sin morosos registrados. Esta sección se <strong>poblará automáticamente al conectar TOKU/Odoo</strong>
+                {' '}(fechas de pago vencidas y saldos). Clasificación: Moroso 1 (día 11+, pena $500) · Moroso 2 (2º mes)
+                · Moroso 3 (3er mes) · Cobranza judicial (4º mes en adelante).
+              </div>
+            ) : (
+              bucketsMoroso.map(b => {
+                const lista = morosos.filter(b.test);
+                if (!lista.length) return null;
+                return (
+                  <div key={b.k} style={{ marginBottom: 14 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: b.bg, color: b.color }}>
+                      {b.l} ({lista.length}) · {b.d}
+                    </span>
+                    {lista.map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--borde)', paddingTop: 8, marginTop: 8 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{p.cliente} <span className="text-xs text-gray">· {p.folio || (p.folio_odoo ? `OV ${p.folio_odoo}` : 's/folio')}</span></div>
+                          <div className="text-xs text-gray">{p.meses_atraso} mes(es) de atraso{p.proxima_fecha_pago ? ` · vence ${p.proxima_fecha_pago}` : ''}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--rojo)' }}>{fmt(p.saldo_vencido)}</div>
+                          {Number(p.pena_convencional) > 0 && <div className="text-xs text-gray">+ pena {fmt(p.pena_convencional)}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

@@ -122,11 +122,10 @@ const aplicarAlias = (r) => {
 const validarFila = (r, idx) => {
   const errores = [];  // bloquean la fila
   const avisos = [];   // no bloquean: el dato opcional se omite/recorta
-  let pendiente = false; // tiene OV Odoo (S) pero aún no folio KENET (MY/SL): no se importa por ahora
-  if (!sanitizar(r.folio)) {
-    if (sanitizar(r.folio_odoo)) pendiente = true;
-    else errores.push('folio vacío');
-  } else if (String(r.folio).length > 100) errores.push('folio excede 100 caracteres');
+  // El folio KENET (MY/SL) puede ir en blanco (ej. Saltillo aún sin SL); basta que haya
+  // folio KENET o OV de Odoo (S) para identificar el proyecto. Solo cliente es obligatorio.
+  if (!sanitizar(r.folio) && !sanitizar(r.folio_odoo)) errores.push('sin folio ni OV de Odoo');
+  if (sanitizar(r.folio) && String(r.folio).length > 100) errores.push('folio excede 100 caracteres');
   if (!sanitizar(r.cliente)) errores.push('cliente vacío');
   else if (String(r.cliente).length > 255) errores.push('cliente excede 255 caracteres');
   if (r.zona && !normalizarZona(r.zona)) avisos.push(`zona "${sanitizar(r.zona)}" no reconocida (se omite)`);
@@ -137,7 +136,7 @@ const validarFila = (r, idx) => {
   if (r.fecha_agenda && !fechaISO(r.fecha_agenda)) avisos.push('fecha no reconocida (se omite)');
   if (r.direccion && String(r.direccion).length > 500) avisos.push('dirección recortada a 500');
   if (r.notas && String(r.notas).length > 1000) avisos.push('notas recortadas a 1000');
-  return { fila: idx + 1, errores, avisos, pendiente, valida: errores.length === 0 && !pendiente };
+  return { fila: idx + 1, errores, avisos, valida: errores.length === 0 };
 };
 
 const mapear = (r) => {
@@ -274,8 +273,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   };
 
   const filasValidas = validaciones.filter(v => v.valida).length;
-  const filasPendientes = validaciones.filter(v => v.pendiente).length;
-  const filasConError = validaciones.filter(v => !v.valida && !v.pendiente).length;
+  const filasConError = validaciones.filter(v => !v.valida).length;
   const filasConAviso = validaciones.filter(v => v.valida && v.avisos?.length).length;
 
   const handleImportar = async () => {
@@ -402,18 +400,10 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
                 </div>
               )}
 
-              {filasPendientes > 0 && (
-                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E' }}>
-                    ⏳ {filasPendientes} fila(s) tienen OV de Odoo (S…) pero aún no folio KENET (MY/SL) — <strong>no se importan por ahora</strong>. Se importarán cuando tengan su folio SL.
-                  </div>
-                </div>
-              )}
-
               {filasConError > 0 && (
                 <div style={{ background: '#FFF4F4', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán (falta folio o cliente):</div>
-                  {validaciones.filter(v => !v.valida && !v.pendiente).slice(0, 15).map(v => (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán (falta cliente):</div>
+                  {validaciones.filter(v => !v.valida).slice(0, 15).map(v => (
                     <div key={v.fila} style={{ fontSize: 12, color: '#DC2626', marginBottom: 2 }}>Fila {v.fila}: {v.errores.join(' · ')}</div>
                   ))}
                 </div>
@@ -438,14 +428,14 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
                       {filas.slice(0, 20).map((r, i) => {
                         const v = validaciones[i];
                         return (
-                          <tr key={i} style={{ background: v?.valida ? 'transparent' : (v?.pendiente ? '#FFFBEB' : '#FFF4F4') }}>
+                          <tr key={i} style={{ background: v?.valida ? 'transparent' : '#FFF4F4' }}>
                             <td style={{ fontSize: 11, color: 'var(--gris-secundario)' }}>{i + 1}</td>
-                            <td style={{ fontSize: 12, fontWeight: 600 }}>{r.folio || <span style={{ color: '#B45309' }}>(en blanco)</span>}</td>
+                            <td style={{ fontSize: 12, fontWeight: 600 }}>{r.folio || <span style={{ color: 'var(--gris-secundario)', fontStyle: 'italic', fontWeight: 400 }}>(en blanco)</span>}</td>
                             <td style={{ fontSize: 12, color: 'var(--gris-secundario)' }}>{r.folio_odoo || '—'}</td>
                             <td style={{ fontSize: 12 }}>{r.cliente}</td>
                             <td style={{ fontSize: 12 }}>{r.zona}</td>
                             <td style={{ fontSize: 12 }}>{r.paneles}</td>
-                            <td style={{ fontSize: 11 }}>{v?.valida ? <span style={{ color: '#16A34A' }}>✓</span> : v?.pendiente ? <span style={{ color: '#B45309' }}>⏳ sin folio KENET</span> : <span style={{ color: '#DC2626' }} title={v?.errores.join('\n')}>✗ {v?.errores[0]}</span>}</td>
+                            <td style={{ fontSize: 11 }}>{v?.valida ? <span style={{ color: '#16A34A' }}>✓</span> : <span style={{ color: '#DC2626' }} title={v?.errores.join('\n')}>✗ {v?.errores[0]}</span>}</td>
                           </tr>
                         );
                       })}

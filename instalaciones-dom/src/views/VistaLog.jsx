@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { getBitacoraGlobal } from '../lib/api';
 
 const TIPOS = {
-  agenda:   { label: 'Agendado',   icon: '📅', color: '#1F4E79' },
-  inicio:   { label: 'Inicio',     icon: '🔧', color: '#F5A623' },
-  cierre:   { label: 'Completado', icon: '✅', color: '#2E9E5B' },
-  reagenda: { label: 'Reagenda',   icon: '🔄', color: '#6B4E9B' },
-  nota:     { label: 'Nota',       icon: '📝', color: '#6B7280' },
-  import:   { label: 'Import',     icon: '📤', color: '#0891B2' },
+  agenda:      { label: 'Agendado',   icon: '📅', color: '#1F4E79' },
+  inicio:      { label: 'Inicio',     icon: '🔧', color: '#F5A623' },
+  cierre:      { label: 'Completado', icon: '✅', color: '#2E9E5B' },
+  reagenda:    { label: 'Reagenda',   icon: '🔄', color: '#6B4E9B' },
+  nota:        { label: 'Nota',       icon: '📝', color: '#6B7280' },
+  import:      { label: 'Import',     icon: '📤', color: '#0891B2' },
+  eliminacion: { label: 'Eliminado',  icon: '🗑️', color: '#DC2626' },
 };
 
 export default function VistaLog() {
@@ -71,6 +72,7 @@ export default function VistaLog() {
                       <div className="log-meta">
                         {(l.created_at || '').slice(11, 16)} · <span className="text-blue fw-700">{l.proyecto?.folio || '—'}</span>
                         {l.proyecto?.cliente ? ` · ${l.proyecto.cliente}` : ''} · <span style={{ color: t.color, fontWeight: 600 }}>{t.icon} {t.label}</span> · {l.usuario?.nombre || 'Sistema'}
+                        {!l.proyecto && l.tipo === 'eliminacion' && <span style={{ color: '#9CA3AF', fontSize: 11, marginLeft: 4 }}>(proyecto eliminado)</span>}
                       </div>
                       <div className="log-desc">{l.descripcion}</div>
                     </div>

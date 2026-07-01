@@ -91,11 +91,28 @@ export async function actualizarProyecto(id, payload) {
   return data;
 }
 
-// Elimina proyectos de la base (solo admin). Borra en cascada su bitácora y trámites CFE
-// (ON DELETE CASCADE). Pensado para limpiar datos durante desarrollo/pruebas.
+// Elimina proyectos de la base (solo admin). Registra cada eliminación en bitácora
+// antes de borrar (proyecto_id queda NULL por ON DELETE SET NULL).
 export async function eliminarProyectos(ids) {
   requireRol('admin');
   if (!ids?.length) return;
+
+  const { data: proyectos } = await supabase
+    .from('proyectos')
+    .select('id, folio, cliente, zona')
+    .in('id', ids);
+
+  if (proyectos?.length) {
+    await supabase.from('bitacora').insert(
+      proyectos.map(p => ({
+        proyecto_id: p.id,
+        tipo: 'eliminacion',
+        descripcion: `Proyecto eliminado. Folio: ${p.folio} · Cliente: ${p.cliente || '—'} · Zona: ${p.zona || '—'}.`,
+        usuario_id: _currentUser?.id || null,
+      }))
+    );
+  }
+
   const { error } = await supabase.from('proyectos').delete().in('id', ids);
   if (error) throw error;
 }

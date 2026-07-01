@@ -10,6 +10,9 @@ solo-S quedan pendientes (no se importan), ignora totales/vacías, y auto-mapea 
 
 **Qué se movió:**
 - `components/FiltroColumna.jsx` (nuevo): dropdown de filtro por columna reutilizable.
+- `lib/useTablaFiltrable.jsx` (nuevo): hook que da búsqueda + filtros + orden a cualquier
+  tabla. Aplicado en **Agenda** y **Gestión de Usuarios** (rol/zona/estatus). Las demás
+  vistas usan tarjetas (no tablas), así que no aplica el filtro por columna.
 - `VistaA_Agenda.jsx`: filtros por columna, orden, checkboxes de fila, toggle "Ver todos"
   (admin) y botón "🗑️ Eliminar de la base" (bulk, solo admin).
 - `api.js`: `eliminarProyectos(ids)` con `requireRol('admin')` (borra en cascada bitácora

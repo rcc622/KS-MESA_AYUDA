@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTodosUsuarios, crearUsuarioConCuenta, actualizarUsuarioPerfil, mensajeError } from '../lib/api';
+import { useTablaFiltrable } from '../lib/useTablaFiltrable';
 import Modal from '../components/Modal';
 
 const ROLES = [
@@ -9,6 +10,13 @@ const ROLES = [
   { value: 'instalador',   label: 'Instalador' },
 ];
 const ZONAS = ['MTY', 'SLT', 'TRC', 'MVA'];
+
+// Columnas con filtro estilo Excel para la tabla de usuarios.
+const COLUMNAS_USUARIOS = {
+  rol:     u => ROLES.find(r => r.value === u.rol)?.label || u.rol,
+  zona:    u => u.zona || '—',
+  estatus: u => (u.activo ? 'Activo' : 'Inactivo'),
+};
 
 const ROL_BADGE = {
   admin:        { bg: '#EDE9FE', color: '#6B4E9B' },
@@ -47,6 +55,10 @@ export default function VistaG_Usuarios({ usuarioActual }) {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  const { filtered, busqueda, setBusqueda, fcol } = useTablaFiltrable(
+    usuarios, COLUMNAS_USUARIOS, [u => u.nombre, u => u.email],
+  );
 
   // Protección: solo admins. Va DESPUÉS de los hooks para no romper las reglas
   // de React (los hooks deben llamarse siempre en el mismo orden).
@@ -122,6 +134,12 @@ export default function VistaG_Usuarios({ usuarioActual }) {
           <div className="stat-card rojo"><div className="stat-val">{inactivos}</div><div className="stat-label">Inactivos</div></div>
         </div>
 
+        <div className="filters-bar">
+          <input type="text" placeholder="🔍 Buscar por nombre o correo…" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+          <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
+          <span className="text-xs text-gray" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>Mostrando {filtered.length}</span>
+        </div>
+
         {loading ? (
           <div className="empty-state"><div className="es-icon">⏳</div><p>Cargando…</p></div>
         ) : (
@@ -131,17 +149,17 @@ export default function VistaG_Usuarios({ usuarioActual }) {
                 <tr>
                   <th>Nombre</th>
                   <th>Correo</th>
-                  <th>Rol</th>
-                  <th>Zona</th>
-                  <th>Estatus</th>
+                  <th><span className="th-flex">Rol {fcol('rol')}</span></th>
+                  <th><span className="th-flex">Zona {fcol('zona')}</span></th>
+                  <th><span className="th-flex">Estatus {fcol('estatus')}</span></th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {usuarios.length === 0 && (
-                  <tr><td colSpan={6} className="text-center text-gray" style={{ padding: 32 }}>Sin usuarios registrados</td></tr>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={6} className="text-center text-gray" style={{ padding: 32 }}>Sin usuarios con estos filtros</td></tr>
                 )}
-                {usuarios.map(u => {
+                {filtered.map(u => {
                   const rb = ROL_BADGE[u.rol] || { bg: '#F3F4F6', color: '#374151' };
                   const esTuPerfil = u.email === usuarioActual?.email;
                   return (

@@ -103,10 +103,30 @@ export default function VistaCFE({ usuarioActual }) {
     } catch (e) { alert(mensajeError(e)); }
   };
 
+  // Instalación terminada → se refleja aquí: inicia el trámite CFE (hito "CFE iniciado").
+  const iniciarCFE = async (p) => {
+    try {
+      await crearTramiteCFE({
+        proyecto_id: p.id, tipo: 'interconexion', estado: 'solicitud',
+        fecha_solicitud: hoyISO(), responsable_id: usuarioActual?.id ?? null,
+        accion_requerida: 'Iniciar trámite ante CFE (instalación terminada).',
+      });
+      await agregarBitacora({
+        proyecto_id: p.id, tipo: 'cfe',
+        descripcion: '📋 Trámite CFE iniciado (la instalación quedó terminada).',
+        usuario_id: usuarioActual?.id ?? null,
+      });
+      cargar();
+    } catch (e) { alert(mensajeError(e)); }
+  };
+
   if (loading) return <div className="page-body"><div className="empty-state"><div className="es-icon">⏳</div><p>Cargando trámites CFE…</p></div></div>;
 
   const activos = tramites.filter(t => !['completado', 'rechazado'].includes(t.estado));
   const alertasCobranza = tramites.filter(t => t.cobranza_alertada).length;
+  // Instalaciones TERMINADAS que aún no tienen ningún trámite CFE → "por iniciar".
+  const conTramite = new Set(tramites.map(t => t.proyecto_id));
+  const porIniciar = proyectos.filter(p => p.estatus === 'completado' && !conTramite.has(p.id));
   const k = {
     activos: activos.length,
     inspeccion: tramites.filter(t => t.estado === 'inspeccion').length,
@@ -138,6 +158,30 @@ export default function VistaCFE({ usuarioActual }) {
         {alertasCobranza > 0 && (
           <div style={{ background: '#FFF8EC', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', margin: '4px 0 16px', fontSize: 13, color: '#92400E' }}>
             🔔 <strong>{alertasCobranza}</strong> medidor(es) bidireccional(es) marcados como llegados → Cobranza puede cobrar (hito 6.1). <span className="text-xs">La integración con TOKU llega en una fase posterior.</span>
+          </div>
+        )}
+
+        {porIniciar.length > 0 && (
+          <div className="card mb-16" style={{ borderColor: '#93C5FD' }}>
+            <div className="card-header" style={{ background: '#EFF6FF' }}>
+              <h3>🔨 Instalaciones terminadas · por iniciar CFE ({porIniciar.length})</h3>
+            </div>
+            <div className="card-body">
+              <div className="text-xs text-gray" style={{ marginBottom: 10 }}>
+                Estas instalaciones ya se terminaron. Inicia su trámite ante CFE (hito "CFE iniciado").
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {porIniciar.map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--borde)', paddingTop: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{p.cliente} <span className="text-xs text-gray">· {p.folio}</span></div>
+                      <div className="text-xs text-gray">{p.zona}{p.fecha_instalacion ? ` · instalado ${p.fecha_instalacion}` : ''}</div>
+                    </div>
+                    {esGestor && <button className="btn btn-primary btn-sm" onClick={() => iniciarCFE(p)}>📋 Iniciar trámite CFE</button>}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

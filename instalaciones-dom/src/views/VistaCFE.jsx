@@ -225,7 +225,9 @@ export default function VistaCFE({ usuarioActual }) {
                         {ESTADOS.map(es => <option key={es.v} value={es.v}>{es.l}</option>)}
                       </select>
                       {t.tipo === 'medidor_bidireccional' && !t.medidor_bidireccional_llego && (
-                        <button className="btn btn-green btn-sm" onClick={() => marcarMedidor(t)}>🔌 Marcar medidor instalado</button>
+                        t.estado === 'aprobado'
+                          ? <button className="btn btn-green btn-sm" onClick={() => marcarMedidor(t)}>🔌 Marcar medidor instalado</button>
+                          : <span className="text-xs text-gray" style={{ alignSelf: 'center' }}>El medidor se marca cuando el trámite esté <strong>Aprobado</strong>.</span>
                       )}
                     </div>
                   )}

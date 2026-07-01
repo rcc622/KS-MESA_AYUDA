@@ -68,7 +68,7 @@ const normHeader = (h) => String(h).toLowerCase().normalize('NFD').replace(/[̀-
 const ALIAS_COLUMNAS = {
   'folio': 'folio', 'folio ks': 'folio', 'folio kenet': 'folio',
   'nombre': 'cliente', 'cliente': 'cliente', 'nombre cliente': 'cliente', 'nombre del cliente': 'cliente', 'cliente final': 'cliente', 'razon social': 'cliente',
-  'folio odoo': 'folio_odoo', 'folio de factura': 'folio_odoo', 'factura': 'folio_odoo', 'ov': 'folio_odoo', 'ov odoo': 'folio_odoo', 'orden de venta': 'folio_odoo',
+  'folio odoo': 'folio_odoo', 'ov': 'folio_odoo', 'ov odoo': 'folio_odoo', 'orden de venta': 'folio_odoo',
   'telefono': 'telefono', 'tel': 'telefono', 'celular': 'telefono', 'whatsapp': 'telefono', 'movil': 'telefono',
   'direccion': 'direccion', 'domicilio': 'direccion', 'dir': 'direccion', 'ubicacion': 'direccion',
   'zona': 'zona', 'ciudad': 'zona', 'plaza': 'zona', 'sucursal': 'zona',
@@ -86,12 +86,32 @@ const campoDe = (header) => {
   const n = normHeader(header);
   return ALIAS_COLUMNAS[n] || (COLUMNAS.includes(n) ? n : null);
 };
+// Separa un folio compuesto "S57443 / MY511" en: folio KENET (MY/KS) y OV de Odoo (S#####).
+// Convención KENET (ver BASES/HANDOFF): S##### = referencia Odoo · MY###/KS-… = folio propio.
+const separarFolios = (valor) => {
+  const s = sanitizar(valor, 200);
+  if (!s) return { folioK: null, folioO: null };
+  const partes = s.split(/[/|]+/).map(t => t.trim()).filter(Boolean);
+  let odoo = null, kenet = null;
+  for (const p of partes) {
+    if (/^S\d/i.test(p) && !odoo) odoo = p;
+    else if (/^(MY|KS)/i.test(p) && !kenet) kenet = p;
+  }
+  return { folioK: (kenet || odoo || s).slice(0, 100), folioO: odoo ? odoo.slice(0, 100) : null };
+};
+
 // Convierte una fila con encabezados arbitrarios a una con campos canónicos KENET.
 const aplicarAlias = (r) => {
   const o = {};
   for (const k in r) {
     const campo = campoDe(k);
     if (campo && (o[campo] == null || o[campo] === '')) o[campo] = r[k];
+  }
+  // Separa el folio compuesto: MY→folio KENET, S→folio Odoo (si no viene ya un folio_odoo).
+  if (o.folio) {
+    const { folioK, folioO } = separarFolios(o.folio);
+    o.folio = folioK;
+    if (folioO && !sanitizar(o.folio_odoo)) o.folio_odoo = folioO;
   }
   return o;
 };

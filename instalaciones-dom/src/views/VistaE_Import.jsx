@@ -106,8 +106,10 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
 
   const handleFile = async (f) => {
     if (!f) return;
-    const ext = f.name.split('.').pop().toLowerCase();
-    if (!['xlsx', 'xls', 'csv'].includes(ext)) { alert('Sube un archivo .xlsx, .xls o .csv'); return; }
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    // Acepta por extensión O por tipo MIME (en móvil a veces el nombre viene raro).
+    const tipoOk = ['xlsx', 'xls', 'csv'].includes(ext) || /spreadsheet|excel|csv/i.test(f.type || '');
+    if (!tipoOk) { alert(`Ese archivo no parece Excel/CSV (${f.name || 'sin nombre'}). Sube un .xlsx, .xls o .csv.`); return; }
     if (f.size > MAX_FILE_SIZE) { alert('El archivo supera el límite de 5 MB'); return; }
     setArchivo(f);
     try {
@@ -228,15 +230,22 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
                 onDragOver={e => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={() => setDrag(false)}
                 onDrop={handleDrop}
-                onClick={() => fileRef.current.click()}
               >
                 <div className="dz-icon">📂</div>
-                <div className="fw-700 mb-8">Arrastra tu archivo aquí</div>
-                <div className="text-sm text-gray mb-16">o haz clic para seleccionarlo</div>
-                <button className="btn btn-primary btn-sm" onClick={e => { e.stopPropagation(); fileRef.current.click(); }}>Seleccionar archivo</button>
+                <div className="fw-700 mb-8">Sube tu archivo</div>
+                <div className="text-sm text-gray mb-16">Toca el botón para elegirlo (o arrástralo en computadora)</div>
+                {/* <label> nativo: la forma más confiable de abrir el selector en móvil */}
+                <label htmlFor="ks-import-file" className="btn btn-primary btn-sm" style={{ cursor: 'pointer' }}>Seleccionar archivo</label>
                 <div className="text-xs text-gray mt-12">Formatos: .xlsx · .xls · .csv</div>
               </div>
-              <input type="file" ref={fileRef} style={{ display: 'none' }} accept=".xlsx,.xls,.csv" onChange={e => handleFile(e.target.files[0])} />
+              <input
+                id="ks-import-file"
+                type="file"
+                ref={fileRef}
+                style={{ display: 'none' }}
+                accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }}
+              />
               <div className="text-xs text-gray" style={{ marginTop: 10 }}>Próximamente: Google Sheets y Odoo (fases siguientes).</div>
             </div>
           </div>

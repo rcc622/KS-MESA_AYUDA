@@ -15,7 +15,6 @@ export default function Sidebar({ vista, setVista, onLogout, usuario, rol, vista
   const [modOpen, setModOpen] = useState(false);
   const navItems = [
     { id: 'agenda',      icon: 'calendar',   label: 'Agenda / SLA',       section: 'Instalaciones' },
-    { id: 'reagendados', icon: 'refresh',    label: 'Reagendados',         section: null },
     { id: 'detalle',     icon: 'clipboard',  label: 'Detalle Proyecto',    section: null },
     { id: 'reporte',     icon: 'smartphone', label: esInstalador ? 'Mis instalaciones' : 'Reporte Instalador',  section: esInstalador ? 'Campo' : null },
     { id: 'archivo',     icon: 'archive',    label: esInstalador ? 'Historial' : 'Archivo',  section: esInstalador ? null : 'Histórico' },

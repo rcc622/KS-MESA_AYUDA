@@ -31,11 +31,9 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
   const [modalFecha, setModalFecha] = useState(false);
   const [fechaAgenda, setFechaAgenda] = useState('');
   const [fechaMostrada, setFechaMostrada] = useState(proyecto?.fecha_agenda || null);
-  const [modalReag, setModalReag] = useState(false);
-  const [reagFecha, setReagFecha] = useState('');
-  const [reagFactor, setReagFactor] = useState('');
-  const [reagMotivo, setReagMotivo] = useState('');
-  const [reagNota, setReagNota] = useState('');
+  const [fechaFactor, setFechaFactor] = useState('');
+  const [fechaMotivo, setFechaMotivo] = useState('');
+  const [fechaNota, setFechaNota] = useState('');
   const [cuadrillas, setCuadrillas] = useState([]);
   const [modalEditar, setModalEditar] = useState(false);
   const [formEdit, setFormEdit] = useState(null);
@@ -106,25 +104,47 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
 
   const handleAgendarFecha = async () => {
     if (!fechaAgenda) return;
+    const esReagenda = !!fechaMostrada;
+    if (esReagenda && (!fechaFactor || !fechaMotivo)) return;
     setGuardando(true);
     try {
+      const esExterno = fechaFactor === 'externo';
+      const motivoLabel = esReagenda
+        ? (FACTORES[fechaFactor]?.motivos.find(m => m[0] === fechaMotivo)?.[1] || fechaMotivo)
+        : null;
+
       await actualizarProyecto(proyecto.id, {
         fecha_agenda: fechaAgenda,
-        estatus: 'agendado',   // al agendar/cambiar fecha el proyecto queda agendado (no "en progreso")
-        dias_en_etapa: 0,
+        ...(esReagenda ? {
+          fecha_original: proyecto.fecha_original || fechaMostrada || proyecto.fecha_agenda,
+          motivo_reagendo: fechaNota || null,
+          reagenda_factor: fechaFactor,
+          reagenda_motivo: fechaMotivo,
+          estatus: 'reagendado',
+          dias_en_etapa: esExterno ? 0 : (proyecto.dias_en_etapa ?? 0),
+        } : {
+          estatus: 'agendado',
+          dias_en_etapa: 0,
+        }),
       });
+
       await agregarBitacora({
         proyecto_id: proyecto.id,
-        tipo: 'agenda',
-        descripcion: `Fecha de instalación agendada: ${fechaAgenda}`,
+        tipo: esReagenda ? 'reagenda' : 'agenda',
+        descripcion: esReagenda
+          ? `Reagendado → ${fechaAgenda}. Factor ${fechaFactor} · ${motivoLabel}${proyecto.estatus === 'en_progreso' ? ' · movimiento de último minuto' : ''}${fechaNota ? '. ' + fechaNota : ''}. SLA: ${esExterno ? 'reinicia (no penaliza a KENET)' : 'conserva (cuenta contra KENET)'}.`
+          : `Fecha de instalación agendada: ${fechaAgenda}`,
         usuario_id: usuarioActual?.id ?? null,
       });
+
       setFechaMostrada(fechaAgenda);
       setModalFecha(false);
       setFechaAgenda('');
+      setFechaFactor('');
+      setFechaMotivo('');
+      setFechaNota('');
       cargarBitacora();
       refrescar();
-      // Crear o actualizar evento en Google Calendar del responsable de la cuadrilla
       const accionCal = proyecto.gcal_event_id ? 'actualizar' : 'crear';
       sincronizarEventoCalendar(proyecto.id, accionCal);
     } catch (e) {
@@ -190,45 +210,6 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
     }
   };
 
-  const abrirReagendar = () => {
-    setReagFecha(''); setReagFactor(''); setReagMotivo(''); setReagNota('');
-    setModalReag(true);
-  };
-
-  const handleReagendar = async () => {
-    if (!reagFecha || !reagFactor || !reagMotivo) return;
-    setGuardando(true);
-    try {
-      const esExterno = reagFactor === 'externo';
-      const enCurso = proyecto.estatus === 'en_progreso';
-      const motivoLabel = FACTORES[reagFactor]?.motivos.find(m => m[0] === reagMotivo)?.[1] || reagMotivo;
-      await actualizarProyecto(proyecto.id, {
-        fecha_agenda: reagFecha,
-        fecha_original: proyecto.fecha_original || fechaMostrada || proyecto.fecha_agenda,
-        motivo_reagendo: reagNota || null,
-        reagenda_factor: reagFactor,
-        reagenda_motivo: reagMotivo,
-        estatus: 'reagendado',
-        dias_en_etapa: esExterno ? 0 : (proyecto.dias_en_etapa ?? 0),
-      });
-      await agregarBitacora({
-        proyecto_id: proyecto.id,
-        tipo: 'reagenda',
-        descripcion: `Reagendado → ${reagFecha}. Factor ${reagFactor} · ${motivoLabel}${enCurso ? ' · movimiento de último minuto' : ''}${reagNota ? '. ' + reagNota : ''}. SLA: ${esExterno ? 'reinicia (no penaliza a KENET)' : 'conserva (cuenta contra KENET)'}.`,
-        usuario_id: usuarioActual?.id ?? null,
-      });
-      setFechaMostrada(reagFecha);
-      setModalReag(false);
-      cargarBitacora();
-      refrescar();
-      // Actualizar evento en Google Calendar con la nueva fecha
-      sincronizarEventoCalendar(proyecto.id, 'actualizar');
-    } catch (e) {
-      alert(mensajeError(e));
-    } finally {
-      setGuardando(false);
-    }
-  };
 
   const cuadrilla = proyecto.cuadrilla;
   const instalador = proyecto.instalador;
@@ -361,12 +342,11 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
                   <button className="btn btn-primary w-full" onClick={abrirEditar}>✏️ Editar proyecto</button>
                 )}
                 {puedeEditar && (
-                  <button className="btn btn-ambar w-full" onClick={() => { setFechaAgenda(fechaMostrada || ''); setModalFecha(true); }}>
+                  <button className="btn btn-ambar w-full" onClick={() => { setFechaAgenda(fechaMostrada || ''); setFechaFactor(''); setFechaMotivo(''); setFechaNota(''); setModalFecha(true); }}>
                     📅 {fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha'}
                   </button>
                 )}
                 <button className="btn btn-outline w-full" onClick={() => setModalNota(true)}>📝 Agregar nota</button>
-                <button className="btn btn-outline w-full" onClick={abrirReagendar}>🔄 Reagendar</button>
                 <hr className="divider" />
                 <button className="btn btn-red w-full btn-sm" style={{ justifyContent: 'center' }}
                   onClick={async () => {
@@ -451,77 +431,68 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       </Modal>
 
       <Modal
-        open={modalReag}
-        onClose={() => setModalReag(false)}
-        title="Reagendar instalación"
-        footer={
-          <>
-            <button className="btn btn-outline" onClick={() => setModalReag(false)}>Cancelar</button>
-            <button className="btn btn-ambar" onClick={handleReagendar} disabled={!reagFecha || !reagFactor || !reagMotivo || guardando}>
-              {guardando ? 'Guardando…' : 'Confirmar reagenda'}
-            </button>
-          </>
-        }
-      >
-        {proyecto.estatus === 'en_progreso' && (
-          <div style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>
-            ⚠️ Instalación en curso — se registra como <strong>movimiento de último minuto</strong>.
-          </div>
-        )}
-        <div className="form-group">
-          <label>Nueva fecha de instalación</label>
-          <input type="date" value={reagFecha} onChange={e => setReagFecha(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
-        </div>
-        <div className="form-row">
-          <div className="form-group">
-            <label>Factor</label>
-            <select value={reagFactor} onChange={e => { setReagFactor(e.target.value); setReagMotivo(''); }}>
-              <option value="">Selecciona…</option>
-              <option value="interno">Interno (KENET)</option>
-              <option value="externo">Externo</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Motivo</label>
-            <select value={reagMotivo} onChange={e => setReagMotivo(e.target.value)} disabled={!reagFactor}>
-              <option value="">{reagFactor ? 'Selecciona…' : '— elige factor —'}</option>
-              {(FACTORES[reagFactor]?.motivos || []).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="form-group">
-          <label>Nota (opcional)</label>
-          <textarea value={reagNota} onChange={e => setReagNota(e.target.value)} placeholder="Detalle del reagende…" rows={2} />
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '8px 10px', background: '#F9FAFB', borderRadius: 6 }}>
-          {reagFactor === 'externo'
-            ? 'Factor externo → el SLA se reinicia (no penaliza a KENET).'
-            : reagFactor === 'interno'
-            ? 'Factor interno → el SLA conserva los días (cuenta contra KENET).'
-            : 'El factor define el SLA: externo no penaliza · interno sí.'}
-        </div>
-      </Modal>
-
-      <Modal
         open={modalFecha}
         onClose={() => setModalFecha(false)}
         title={fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha de instalación'}
         footer={
           <>
             <button className="btn btn-outline" onClick={() => setModalFecha(false)}>Cancelar</button>
-            <button className="btn btn-ambar" onClick={handleAgendarFecha} disabled={!fechaAgenda || guardando}>
-              {guardando ? 'Guardando…' : 'Guardar fecha'}
+            <button
+              className="btn btn-ambar"
+              onClick={handleAgendarFecha}
+              disabled={!fechaAgenda || (!!fechaMostrada && (!fechaFactor || !fechaMotivo)) || guardando}
+            >
+              {guardando ? 'Guardando…' : fechaMostrada ? 'Confirmar cambio de fecha' : 'Guardar fecha'}
             </button>
           </>
         }
       >
+        {fechaMostrada && proyecto?.estatus === 'en_progreso' && (
+          <div style={{ fontSize: 12, color: '#92400E', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, padding: '8px 12px', marginBottom: 14 }}>
+            ⚠️ Instalación en curso — se registra como <strong>movimiento de último minuto</strong>.
+          </div>
+        )}
         <div className="form-group">
-          <label>Fecha de instalación</label>
+          <label>{fechaMostrada ? 'Nueva fecha de instalación' : 'Fecha de instalación'}</label>
           <input type="date" value={fechaAgenda} onChange={e => setFechaAgenda(e.target.value)} min={new Date().toISOString().slice(0, 10)} />
         </div>
-        <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '6px 10px', background: '#F9FAFB', borderRadius: 6 }}>
-          Se registra en la bitácora. La cuadrilla asignada la verá como su próxima instalación.
-        </div>
+        {fechaMostrada && (
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Factor</label>
+                <select value={fechaFactor} onChange={e => { setFechaFactor(e.target.value); setFechaMotivo(''); }}>
+                  <option value="">Selecciona…</option>
+                  <option value="interno">Interno (KENET)</option>
+                  <option value="externo">Externo</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Motivo</label>
+                <select value={fechaMotivo} onChange={e => setFechaMotivo(e.target.value)} disabled={!fechaFactor}>
+                  <option value="">{fechaFactor ? 'Selecciona…' : '— elige factor —'}</option>
+                  {(FACTORES[fechaFactor]?.motivos || []).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Nota adicional <span className="text-gray text-xs">(opcional)</span></label>
+              <textarea value={fechaNota} onChange={e => setFechaNota(e.target.value)} placeholder="Detalle del cambio de fecha…" rows={2} />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '8px 10px', background: '#F9FAFB', borderRadius: 6 }}>
+              {fechaFactor === 'externo'
+                ? 'Factor externo → el SLA se reinicia (no penaliza a KENET).'
+                : fechaFactor === 'interno'
+                ? 'Factor interno → el SLA conserva los días (cuenta contra KENET).'
+                : 'El factor define el SLA: externo no penaliza · interno sí.'}
+            </div>
+          </>
+        )}
+        {!fechaMostrada && (
+          <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '6px 10px', background: '#F9FAFB', borderRadius: 6 }}>
+            Se registra en la bitácora. La cuadrilla asignada la verá como su próxima instalación.
+          </div>
+        )}
       </Modal>
 
       <Modal

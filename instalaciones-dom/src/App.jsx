@@ -9,7 +9,6 @@ import VistaArchivo from './views/VistaArchivo';
 import VistaLog from './views/VistaLog';
 import VistaA_Agenda from './views/VistaA_Agenda';
 import VistaC_Detalle from './views/VistaC_Detalle';
-import VistaD_Reagendados from './views/VistaD_Reagendados';
 import VistaE_Import from './views/VistaE_Import';
 import VistaF_Reporte from './views/VistaF_Reporte';
 import VistaI_Cortes from './views/VistaI_Cortes';
@@ -25,8 +24,8 @@ import AsistenteFlotante from './components/AsistenteFlotante';
 // disponible para todos los roles internos.
 function vistasPorRol(rol) {
   if (rol === 'instalador') return ['reporte', 'archivo', 'asistente'];
-  if (rol === 'admin') return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos', 'asistente', 'usuarios'];
-  return ['agenda', 'reagendados', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos', 'asistente'];
+  if (rol === 'admin') return ['agenda', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos', 'asistente', 'usuarios'];
+  return ['agenda', 'detalle', 'import', 'cortes', 'cuadrillas', 'archivo', 'movimientos', 'asistente'];
 }
 function rolLabel(rol) {
   return ({ admin: 'Admin', pm_domestico: 'PM', coordinador: 'Coordinador', instalador: 'Instalador' })[rol] || 'Usuario';
@@ -173,7 +172,6 @@ export default function App() {
     switch (vista) {
       case 'agenda':      return <VistaA_Agenda      {...props} />;
       case 'detalle':     return <VistaC_Detalle      {...props} proyecto={proyectoSeleccionado} />;
-      case 'reagendados': return <VistaD_Reagendados  {...props} />;
       case 'import':      return <VistaE_Import        {...props} />;
       case 'reporte':     return <VistaF_Reporte       {...props} />;
       case 'archivo':     return <VistaArchivo         {...props} />;

@@ -25,7 +25,7 @@ const ROL_BADGE = {
   instalador:   { bg: '#F0FBF4', color: '#2E9E5B' },
 };
 
-const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'pm_domestico', zona: 'MTY', activo: true };
+const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'pm_domestico', zona: 'MTY', activo: true, drive_folder_id: '' };
 
 // Genera una contraseña temporal legible (el usuario puede cambiarla después)
 function generarPassword() {
@@ -74,7 +74,7 @@ export default function VistaG_Usuarios({ usuarioActual }) {
   }
 
   const abrirEditar = (u) => {
-    setForm({ nombre: u.nombre, email: u.email, rol: u.rol, zona: u.zona || 'MTY', activo: u.activo });
+    setForm({ nombre: u.nombre, email: u.email, rol: u.rol, zona: u.zona || 'MTY', activo: u.activo, drive_folder_id: u.drive_folder_id || '' });
     setModalEditar(u);
   };
 
@@ -82,7 +82,10 @@ export default function VistaG_Usuarios({ usuarioActual }) {
     if (!form.nombre || !form.email || !form.password) return;
     setGuardando(true);
     try {
-      await crearUsuarioConCuenta(form);
+      const nuevo = await crearUsuarioConCuenta(form);
+      if (form.rol === 'instalador' && form.drive_folder_id && nuevo?.id) {
+        await actualizarUsuarioPerfil(nuevo.id, { drive_folder_id: form.drive_folder_id });
+      }
       setModalCrear(false);
       setForm(FORM_VACIO);
       cargar();
@@ -94,10 +97,11 @@ export default function VistaG_Usuarios({ usuarioActual }) {
     setGuardando(true);
     try {
       await actualizarUsuarioPerfil(modalEditar.id, {
-        nombre: form.nombre,
-        rol:    form.rol,
-        zona:   form.zona || null,
-        activo: form.activo,
+        nombre:          form.nombre,
+        rol:             form.rol,
+        zona:            form.zona || null,
+        activo:          form.activo,
+        drive_folder_id: form.rol === 'instalador' ? (form.drive_folder_id || null) : null,
       });
       setModalEditar(null);
       cargar();
@@ -263,6 +267,19 @@ export default function VistaG_Usuarios({ usuarioActual }) {
             </select>
           </div>
         </div>
+        {form.rol === 'instalador' && (
+          <div className="form-group">
+            <label>Carpeta Drive <span className="text-gray text-xs">(ID de la carpeta del instalador)</span></label>
+            <input
+              value={form.drive_folder_id}
+              onChange={e => setForm(f => ({ ...f, drive_folder_id: e.target.value }))}
+              placeholder="Ej: 1YuhBlswCAXn7vmjsRxR_0lM5eMyGcxvc"
+            />
+            <div className="text-xs" style={{ color: 'var(--gris-secundario)', marginTop: 4 }}>
+              Copia el ID desde la URL de Drive: drive.google.com/drive/folders/<strong>[ID aquí]</strong>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Modal: editar usuario */}
@@ -306,6 +323,19 @@ export default function VistaG_Usuarios({ usuarioActual }) {
             </select>
           </div>
         </div>
+        {form.rol === 'instalador' && (
+          <div className="form-group">
+            <label>Carpeta Drive <span className="text-gray text-xs">(ID de la carpeta del instalador)</span></label>
+            <input
+              value={form.drive_folder_id}
+              onChange={e => setForm(f => ({ ...f, drive_folder_id: e.target.value }))}
+              placeholder="Ej: 1YuhBlswCAXn7vmjsRxR_0lM5eMyGcxvc"
+            />
+            <div className="text-xs" style={{ color: 'var(--gris-secundario)', marginTop: 4 }}>
+              Copia el ID desde la URL de Drive: drive.google.com/drive/folders/<strong>[ID aquí]</strong>
+            </div>
+          </div>
+        )}
         {modalEditar?.email === usuarioActual?.email && (
           <div style={{ fontSize: 11, color: '#92400E', background: '#FEF3C7', padding: '6px 10px', borderRadius: 6 }}>
             ⚠️ No puedes cambiar tu propio rol ni desactivar tu propia cuenta.

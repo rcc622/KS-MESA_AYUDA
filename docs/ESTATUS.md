@@ -1,5 +1,28 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 2) · Randall + Claude · Filtros estilo Excel + búsqueda + borrado admin en Agenda
+
+En la vista de Agenda se agregaron **filtros por columna estilo Excel** (ordenar A→Z/Z→A,
+buscar valor, checkboxes) en Cliente/Zona/Cuadrilla/Estatus, **barra de búsqueda** por
+cliente/folio, y **selección de filas con borrado para admin** (limpieza de datos en fase
+de pruebas). También se afinó el import: separa folio compuesto (MY→KENET, S→Odoo), los
+solo-S quedan pendientes (no se importan), ignora totales/vacías, y auto-mapea columnas.
+
+**Qué se movió:**
+- `components/FiltroColumna.jsx` (nuevo): dropdown de filtro por columna reutilizable.
+- `VistaA_Agenda.jsx`: filtros por columna, orden, checkboxes de fila, toggle "Ver todos"
+  (admin) y botón "🗑️ Eliminar de la base" (bulk, solo admin).
+- `api.js`: `eliminarProyectos(ids)` con `requireRol('admin')` (borra en cascada bitácora
+  y trámites CFE). La RLS de `proyectos_delete` ya permite borrar a admin.
+- Import: alias determinista, separación de folios, filas pendientes, columnas
+  Folio KENET/Folio Odoo en el preview.
+
+**Cómo probar (admin):** Agenda → marca filas → "🗑️ Eliminar de la base" (pide confirmación).
+Filtros: toca el ▾ en un encabezado. **Ojo:** el borrado es real y no se puede deshacer.
+
+---
+
+
 > **Cómo se usa esta bitácora** (protocolo en `CLAUDE.md`):
 > - **Al iniciar sesión:** lee la entrada de hasta arriba y dale un informe breve al developer.
 > - **Al cerrar un avance/milestone:** agrega una entrada NUEVA **hasta arriba** (lo más

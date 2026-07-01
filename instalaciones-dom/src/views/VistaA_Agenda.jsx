@@ -1,9 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProyectos, getCuadrillas, crearProyecto, agregarBitacora, mensajeError } from '../lib/api';
+import { getProyectos, getCuadrillas, crearProyecto, agregarBitacora, eliminarProyectos, mensajeError } from '../lib/api';
 import { sincronizarEventoCalendar } from '../lib/gcal';
 import SLABadge from '../components/SLABadge';
 import EstatusBadge from '../components/EstatusBadge';
+import FiltroColumna from '../components/FiltroColumna';
 import Modal from '../components/Modal';
+
+// Columnas con filtro estilo Excel y cómo obtener su valor por proyecto.
+const COLS_FILTRO = {
+  cliente:   p => p.cliente || '—',
+  zona:      p => p.zona || '—',
+  cuadrilla: p => p.cuadrilla?.nombre || 'Sin asignar',
+  estatus:   p => p.estatus || '—',
+};
 
 const ZONAS = ['MTY', 'SLT', 'TRC', 'MVA'];
 
@@ -13,9 +22,12 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [filtrZona, setFiltrZona] = useState('');
-  const [filtrEstatus, setFiltrEstatus] = useState('');
   const [busqueda, setBusqueda] = useState('');
+  const [filtros, setFiltros] = useState({});        // { campo: Set(valores) | null(todos) }
+  const [orden, setOrden] = useState(null);          // { campo, dir }
+  const [seleccion, setSeleccion] = useState(new Set()); // ids de filas marcadas
+  const [verTodos, setVerTodos] = useState(false);   // admin: incluir completados/cancelados
+  const [borrando, setBorrando] = useState(false);
   const [modalAgendar, setModalAgendar] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
@@ -48,15 +60,62 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   useEffect(() => { cargar(); }, [cargar]);
 
   const activos = proyectos.filter(p => p.estatus !== 'completado' && p.estatus !== 'cancelado');
+  const base = verTodos ? proyectos : activos;   // admin puede ver todos para limpiar pruebas
 
-  const filtered = activos.filter(p => {
-    const matchZona = !filtrZona || p.zona === filtrZona;
-    const matchEst  = !filtrEstatus || p.estatus === filtrEstatus;
-    const matchBus  = !busqueda ||
-      p.cliente.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.folio.toLowerCase().includes(busqueda.toLowerCase());
-    return matchZona && matchEst && matchBus;
+  const valorDe = (p, campo) => COLS_FILTRO[campo]?.(p) ?? '';
+  const valoresCol = (campo) => {
+    const m = new Map();
+    base.forEach(p => { const v = valorDe(p, campo); if (!m.has(v)) m.set(v, { val: v, label: v }); });
+    return [...m.values()].sort((a, b) => String(a.label).localeCompare(String(b.label), 'es', { numeric: true }));
+  };
+
+  let filtered = base.filter(p => {
+    if (busqueda) {
+      const q = busqueda.toLowerCase();
+      if (!(p.cliente || '').toLowerCase().includes(q) && !(p.folio || '').toLowerCase().includes(q)) return false;
+    }
+    for (const campo of Object.keys(COLS_FILTRO)) {
+      const sel = filtros[campo];
+      if (sel != null && !sel.has(valorDe(p, campo))) return false;
+    }
+    return true;
   });
+  if (orden) {
+    const dir = orden.dir === 'desc' ? -1 : 1;
+    filtered = [...filtered].sort((a, b) =>
+      String(valorDe(a, orden.campo)).localeCompare(String(valorDe(b, orden.campo)), 'es', { numeric: true }) * dir);
+  }
+
+  const setFiltroCol = (campo, sel) => setFiltros(f => ({ ...f, [campo]: sel }));
+  const fcol = (campo) => (
+    <FiltroColumna
+      valores={valoresCol(campo)}
+      seleccionados={filtros[campo] ?? null}
+      onChange={sel => setFiltroCol(campo, sel)}
+      onSort={dir => setOrden({ campo, dir })}
+      sortDir={orden?.campo === campo ? orden.dir : null}
+    />
+  );
+
+  const idsFiltrados = filtered.map(p => p.id);
+  const todosMarcados = idsFiltrados.length > 0 && idsFiltrados.every(id => seleccion.has(id));
+  const toggleTodos = () => setSeleccion(prev => {
+    const s = new Set(prev);
+    if (todosMarcados) idsFiltrados.forEach(id => s.delete(id));
+    else idsFiltrados.forEach(id => s.add(id));
+    return s;
+  });
+  const toggleUno = (id) => setSeleccion(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const eliminarSeleccion = async () => {
+    const ids = [...seleccion];
+    if (!ids.length) return;
+    if (!confirm(`¿Eliminar ${ids.length} proyecto(s) de la base de datos? También se borra su bitácora y trámites CFE. Esta acción NO se puede deshacer.`)) return;
+    setBorrando(true);
+    try { await eliminarProyectos(ids); setSeleccion(new Set()); cargar(); }
+    catch (e) { alert(mensajeError(e)); }
+    finally { setBorrando(false); }
+  };
 
   const stats = {
     total:     activos.length,
@@ -147,34 +206,47 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         </div>
 
         <div className="filters-bar">
-          <input type="text" placeholder="🔍 Buscar cliente o folio…" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-          <select value={filtrZona} onChange={e => setFiltrZona(e.target.value)}>
-            <option value="">Todas las zonas</option>
-            {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
-          </select>
-          <select value={filtrEstatus} onChange={e => setFiltrEstatus(e.target.value)}>
-            <option value="">Todos los estatus</option>
-            <option value="agendado">Agendado</option>
-            <option value="en_progreso">En progreso</option>
-            <option value="reagendado">Reagendado</option>
-          </select>
+          <input type="text" placeholder="🔍 Buscar cliente por nombre o folio…" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
           <button className="btn btn-outline btn-sm" onClick={cargar}>↺ Actualizar</button>
+          {esAdmin && (
+            <label className="text-xs" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--gris-secundario)', whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={verTodos} onChange={e => setVerTodos(e.target.checked)} /> Ver todos (incl. completados)
+            </label>
+          )}
+          <span className="text-xs text-gray" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>Mostrando {filtered.length}</span>
         </div>
+
+        {esAdmin && seleccion.size > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 14px', marginBottom: 12 }}>
+            <span className="text-sm" style={{ fontWeight: 600, color: '#991B1B' }}>{seleccion.size} seleccionado(s)</span>
+            <button className="btn btn-sm" style={{ background: 'var(--rojo)', color: 'white' }} onClick={eliminarSeleccion} disabled={borrando}>
+              {borrando ? 'Eliminando…' : '🗑️ Eliminar de la base'}
+            </button>
+            <button className="btn btn-outline btn-sm" onClick={() => setSeleccion(new Set())}>Quitar selección</button>
+          </div>
+        )}
 
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Folio</th><th>Cliente</th><th>Zona</th><th>Cuadrilla</th>
-                <th>Fecha agenda</th><th>SLA</th><th>Estatus</th><th>Pago</th><th></th>
+                {esAdmin && <th style={{ width: 34 }}><input type="checkbox" checked={todosMarcados} onChange={toggleTodos} aria-label="Seleccionar todos" /></th>}
+                <th>Folio</th>
+                <th><span className="th-flex">Cliente {fcol('cliente')}</span></th>
+                <th><span className="th-flex">Zona {fcol('zona')}</span></th>
+                <th><span className="th-flex">Cuadrilla {fcol('cuadrilla')}</span></th>
+                <th>Fecha agenda</th><th>SLA</th>
+                <th><span className="th-flex">Estatus {fcol('estatus')}</span></th>
+                <th>Pago</th><th></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="text-center text-gray" style={{ padding: 32 }}>Sin proyectos con estos filtros</td></tr>
+                <tr><td colSpan={esAdmin ? 10 : 9} className="text-center text-gray" style={{ padding: 32 }}>Sin proyectos con estos filtros</td></tr>
               )}
               {filtered.map(p => (
-                <tr key={p.id}>
+                <tr key={p.id} style={{ background: seleccion.has(p.id) ? '#EFF6FF' : undefined }}>
+                  {esAdmin && <td><input type="checkbox" checked={seleccion.has(p.id)} onChange={() => toggleUno(p.id)} aria-label="Seleccionar fila" /></td>}
                   <td>
                     <div className="fw-700 text-blue" style={{ fontSize: 12 }}>{p.folio}</div>
                     <div className="text-xs text-gray">{p.folio_odoo}</div>

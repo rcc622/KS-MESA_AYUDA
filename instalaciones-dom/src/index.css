@@ -565,3 +565,39 @@ textarea { resize: vertical; min-height: 80px; }
     height: 82dvh; max-height: 82dvh; border-radius: 16px 16px 0 0;
   }
 }
+
+/* ── Filtro por columna estilo Excel ──────────────────────────── */
+.th-flex { display: inline-flex; align-items: center; gap: 4px; }
+.fcol { position: relative; display: inline-flex; }
+.fcol-btn {
+  border: 1px solid transparent; background: transparent; cursor: pointer; color: var(--gris-secundario);
+  font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 5px;
+}
+.fcol-btn:hover { background: var(--borde); color: var(--gris-texto); }
+.fcol-btn.activo { color: var(--azul-primario); background: rgba(31,78,121,0.12); }
+.fcol-btn.sorted { color: var(--azul-primario); }
+
+.fcol-pop {
+  position: absolute; top: 100%; left: 0; z-index: 120; margin-top: 4px;
+  width: 260px; max-width: 78vw; background: white; border: 1px solid var(--borde);
+  border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 6px;
+  display: flex; flex-direction: column; text-align: left;
+}
+.fcol-sort {
+  display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  font-size: 13px; color: var(--gris-texto); padding: 8px 10px; border-radius: 6px;
+}
+.fcol-sort:hover { background: var(--fondo); }
+.fcol-sep { height: 1px; background: var(--borde); margin: 4px 0; }
+.fcol-acts { display: flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 12px; }
+.fcol-acts button { background: none; border: none; color: var(--azul-primario); cursor: pointer; font-size: 12px; font-weight: 600; padding: 0; }
+.fcol-acts button:hover { text-decoration: underline; }
+.fcol-count { margin-left: auto; color: var(--gris-secundario); font-weight: 400; }
+.fcol-search { width: 100%; margin: 6px 0; padding: 8px 10px; border: 1px solid var(--azul-primario); border-radius: 8px; font-size: 13px; }
+.fcol-search:focus { outline: none; }
+.fcol-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; }
+.fcol-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.fcol-item:hover { background: var(--fondo); }
+.fcol-item input { flex-shrink: 0; }
+.fcol-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fcol-empty { padding: 10px; color: var(--gris-secundario); font-size: 12px; text-align: center; }

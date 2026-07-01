@@ -4,11 +4,12 @@ import { notificarCobranza } from '../lib/notificaciones';
 import Modal from '../components/Modal';
 
 const TIPOS = [
-  { v: 'uvie',                 l: 'UVIE' },
-  { v: 'uiie',                 l: 'UIIE' },
-  { v: 'rmu',                  l: 'RMU' },
-  { v: 'interconexion',        l: 'Interconexión' },
-  { v: 'medidor_bidireccional', l: 'Medidor bidireccional' },
+  { v: 'medidor_bidireccional', l: 'Medidor Bidireccional (MB)' },
+  { v: 'cambio_nombre',         l: 'Cambio de nombre (CN)' },
+  { v: 'tramite_220v',          l: 'Trámite 220V (220v)' },
+  { v: 'prep_220v',             l: 'Preparación 220V (pre-220v)' },
+  { v: 'uvie',                  l: 'UVIE' },
+  { v: 'uiie',                  l: 'UIIE' },
 ];
 const TIPO_LABEL = Object.fromEntries(TIPOS.map(t => [t.v, t.l]));
 
@@ -60,6 +61,8 @@ export default function VistaCFE({ usuarioActual }) {
     if (!form.proyecto_id) { alert('Elige un proyecto.'); return; }
     setGuardando(true);
     try {
+      // ¿Es el PRIMER trámite CFE de este proyecto? → hito "CFE iniciado" (aviso a Cobranza).
+      const esPrimero = !tramites.some(t => t.proyecto_id === form.proyecto_id);
       await crearTramiteCFE({
         ...form,
         responsable_id: usuarioActual?.id ?? null,
@@ -67,6 +70,10 @@ export default function VistaCFE({ usuarioActual }) {
         accion_requerida: form.accion_requerida || null,
         notas: form.notas || null,
       });
+      if (esPrimero) {
+        await agregarBitacora({ proyecto_id: form.proyecto_id, tipo: 'cfe', descripcion: '📋 Trámite CFE iniciado.', usuario_id: usuarioActual?.id ?? null });
+        notificarCobranza('cfe_iniciado', proyectos.find(p => p.id === form.proyecto_id));
+      }
       setModalCrear(false); setForm(FORM_VACIO);
       cargar();
     } catch (e) { alert(mensajeError(e)); }
@@ -105,23 +112,9 @@ export default function VistaCFE({ usuarioActual }) {
     } catch (e) { alert(mensajeError(e)); }
   };
 
-  // Instalación terminada → se refleja aquí: inicia el trámite CFE (hito "CFE iniciado").
-  const iniciarCFE = async (p) => {
-    try {
-      await crearTramiteCFE({
-        proyecto_id: p.id, tipo: 'interconexion', estado: 'solicitud',
-        fecha_solicitud: hoyISO(), responsable_id: usuarioActual?.id ?? null,
-        accion_requerida: 'Iniciar trámite ante CFE (instalación terminada).',
-      });
-      await agregarBitacora({
-        proyecto_id: p.id, tipo: 'cfe',
-        descripcion: '📋 Trámite CFE iniciado (la instalación quedó terminada).',
-        usuario_id: usuarioActual?.id ?? null,
-      });
-      notificarCobranza('cfe_iniciado', p);   // hito: CFE iniciado
-      cargar();
-    } catch (e) { alert(mensajeError(e)); }
-  };
+  // Instalación terminada → abre el modal para elegir el tipo de trámite CFE a iniciar.
+  // El aviso a Cobranza ("CFE iniciado") se dispara al crear el primer trámite (en crear()).
+  const iniciarCFE = (p) => { setForm({ ...FORM_VACIO, proyecto_id: p.id }); setModalCrear(true); };
 
   if (loading) return <div className="page-body"><div className="empty-state"><div className="es-icon">⏳</div><p>Cargando trámites CFE…</p></div></div>;
 

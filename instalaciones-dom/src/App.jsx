@@ -17,6 +17,7 @@ import VistaL_Cuadrillas from './views/VistaL_Cuadrillas';
 import VistaG_Usuarios from './views/VistaG_Usuarios';
 import VistaAsistente from './views/VistaAsistente';
 import VistaCFE from './views/VistaCFE';
+import VistaCobranza from './views/VistaCobranza';
 import AsistenteFlotante from './components/AsistenteFlotante';
 
 // Qué vistas ve cada rol. El instalador (jefe de cuadrilla) solo ve su módulo
@@ -168,6 +169,7 @@ export default function App() {
   const renderVista = () => {
     if (modulo === 'mesa') return <VistaPanel goTo={(v) => { setModulo('instalaciones'); setVista(v); }} usuarioActual={usuarioActual} />;
     if (modulo === 'cfe') return <VistaCFE usuarioActual={usuarioActual} />;
+    if (modulo === 'cobranza') return <VistaCobranza usuarioActual={usuarioActual} />;
     switch (vista) {
       case 'agenda':      return <VistaA_Agenda      {...props} />;
       case 'detalle':     return <VistaC_Detalle      {...props} proyecto={proyectoSeleccionado} />;

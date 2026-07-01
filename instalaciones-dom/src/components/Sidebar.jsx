@@ -5,6 +5,7 @@ const MODULOS = [
   { id: 'mesa',          label: 'Mesa de Control',          disponible: true },
   { id: 'instalaciones', label: 'Instalaciones Domésticas', disponible: true },
   { id: 'cfe',           label: 'CFE / Gestoría',           disponible: true },
+  { id: 'cobranza',      label: 'Cobranza',                 disponible: true },
   { id: 'soporte',       label: 'Soporte Técnico',          disponible: false },
   { id: 'portal',        label: 'Portal Cliente',           disponible: false },
 ];

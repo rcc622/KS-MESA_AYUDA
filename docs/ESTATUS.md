@@ -1,5 +1,38 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 4) · Randall + Claude · 💰 Módulo de Cobranza + reordenamiento de pendientes
+
+Creado el **módulo de Cobranza** — objetivo central del proyecto (subir la **efectividad de
+cobranza**). También llegaron los correos a Cobranza (Resend funciona) y se afinaron los
+tipos de trámite CFE.
+
+**Qué se movió:**
+- **`VistaCobranza.jsx`** (módulo nuevo, en el switcher): KPI **Efectividad de cobranza** +
+  Enganche por cobrar / Restante por cobrar / Atrasados. Secciones: **Agenda confirmada**
+  (Hoy / Próximos), **Enganche por cobrar** (instalación terminada), **Restante + 1ª
+  mensualidad** (medidor instalado), y **Morosos (1·2·3)** como marcador (reglas pendientes).
+  Botón "Marcar cobrado" por hito (operativo; montos se leen de Odoo).
+- **Correos a Cobranza:** ya funcionan (llegó el correo de prueba). Los 3 hitos avisan
+  automático como efecto de la acción real.
+- **CFE:** tipos actualizados (MB/CN/220V/pre-220V/UVIE/UIIE) — requiere
+  `sql/migracion_cfe_tipos.sql`. El botón de medidor solo aparece en estado "Aprobado".
+
+**⏳ Pendientes de PABLO (reasignados):**
+- **Google Drive Opción A:** habilitar Drive API, redeploy `gcal-auth`, deploy `drive-upload`,
+  reconectar Google + `DRIVE_OWNER_EMAIL`. (Código listo en main.)
+- **Correos a compañeros de Cobranza:** verificar dominio en Resend (`kenetsolar.com`) para
+  enviar a otros correos y cambiar `NOTIFY_FROM` a `notificaciones@kenetsolar.com`.
+
+**🔥 PRIORITARIO:**
+- **Integración API TOKU** — para automatizar el estatus de cobro y montos reales (hoy el
+  módulo de Cobranza usa flags manuales + conteos; TOKU/Odoo lo vuelven real).
+
+**⏳ Pendiente de Randall (rápido):** correr `sql/migracion_cfe_tipos.sql`. Enviar el KPI de
+morosos (1·2·3) para construir esa sección.
+
+---
+
+
 ## 2026-07-01 (CIERRE) · Randall + Claude · Resumen del día + pendientes de despliegue
 
 Día grande. Todo el **código está en `main`** y compila; faltan solo **pasos de despliegue

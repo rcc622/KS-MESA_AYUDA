@@ -82,7 +82,12 @@ y lo que no puede fallar. Como el backend es agnóstico, se mide y se ajusta.
 | **1** | **Chat interno "Asistente"** con acceso a datos reales (estatus, resúmenes, bitácora) vía *tool use* | Equipo (admin/PM/coordinador/instalador) | Bajo ✅ | Fase 0 |
 | **2** | **Importación inteligente** — botón "Formatear con IA" para Excels sucios (mapea columnas arbitrarias al esquema; el humano revisa antes de importar) | PM | Bajo | Fase 0 |
 | **3** | **Módulo CFE / Gestoría** — trámites ante CFE (UVIE, UIIE, RMU, interconexión, **medidor bidireccional**); al marcar que llegó el medidor → **alerta a Cobranza** ("ya se puede cobrar", hito 6.1). | Gestoría / PM / Coord | Medio | esquema + RLS |
+| **3.5** 🔥 | **Módulo de Cobranza** — objetivo central del proyecto: subir la **efectividad de cobranza**. KPI principal = % de hitos cobrados. Agenda confirmada (hoy/próximos), enganche por cobrar (instalación terminada), restante+mensualidad (medidor instalado), morosos 1·2·3. **Correos automáticos a Cobranza** en los 3 hitos (Resend). | Cobranza / Admin | Medio | CFE + hitos |
 | **4** | **Chat del cliente** + **Portal Cliente** con login y *scoping* estricto por RLS (el cliente solo ve su proyecto) | Cliente | Medio — requiere cuidado | Fase 0 + RLS |
+
+> **🔥 PRIORITARIO — Integración API TOKU:** automatiza el estatus de cobro y los montos
+> reales (hoy Cobranza usa flags/conteos; TOKU + Odoo lo vuelven real). Es la siguiente
+> pieza grande tras el módulo de Cobranza.
 
 > **Nota de motores (jun-2026):** para testear IAs sin gastar la cuenta personal de
 > Claude, hoy el asistente usa **Llama y Qwen en Groq** (una sola llave). Claude queda

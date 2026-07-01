@@ -19,7 +19,6 @@ const TIPOS_BITACORA = {
   import:   { label: 'Import',      icon: '📤', color: '#0891B2' },
 };
 
-const WATTS_POR_PANEL = 600;
 
 export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccionado, usuarioActual }) {
   const [bitacora, setBitacora] = useState([]);
@@ -157,10 +156,12 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
   const abrirEditar = () => {
     const p = proyecto;
     setFormEdit({
-      vendedor: p.vendedor || '', cliente: p.cliente || '', correo_cliente: p.correo_cliente || '',
-      telefono: p.telefono || '', direccion: p.direccion || '', maps_url: p.maps_url || '',
-      zona: p.zona || 'MTY', folio_odoo: p.folio_odoo || '', cuadrilla_id: p.cuadrilla_id || '',
-      paneles: p.paneles ?? '', panel_potencia_w: p.panel_potencia_w ?? '', panel_marca: p.panel_marca || '',
+      folio_odoo: p.folio_odoo || '', vendedor: p.vendedor || '',
+      cliente: p.cliente || '', correo_cliente: p.correo_cliente || '',
+      direccion: p.direccion || '', maps_url: p.maps_url || '',
+      zona: p.zona || 'MTY', cuadrilla_id: p.cuadrilla_id || '',
+      paneles: p.paneles ?? '', panel_potencia_w: p.panel_potencia_w ?? '',
+      panel_marca: p.panel_marca || '', kw: p.kw ?? '',
       inversor_tipo: p.inversor_tipo || '', inversor_cantidad: p.inversor_cantidad ?? '',
       inversor_capacidad_kw: p.inversor_capacidad_kw ?? '', inversor_marca: p.inversor_marca || '',
       notas: p.notas || '',
@@ -172,21 +173,19 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
     if (!formEdit?.cliente?.trim()) return;
     setGuardando(true);
     try {
-      const paneles = formEdit.paneles ? parseInt(formEdit.paneles) : null;
       await actualizarProyecto(proyecto.id, {
+        folio_odoo: formEdit.folio_odoo || null,
         vendedor: formEdit.vendedor || null,
         cliente: formEdit.cliente,
         correo_cliente: formEdit.correo_cliente || null,
-        telefono: formEdit.telefono || null,
         direccion: formEdit.direccion || null,
         maps_url: formEdit.maps_url || null,
         zona: formEdit.zona,
-        folio_odoo: formEdit.folio_odoo || null,
         cuadrilla_id: formEdit.cuadrilla_id || null,
-        paneles,
-        kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,
+        paneles: formEdit.paneles ? parseInt(formEdit.paneles) : null,
         panel_potencia_w: formEdit.panel_potencia_w ? parseInt(formEdit.panel_potencia_w) : null,
         panel_marca: formEdit.panel_marca || null,
+        kw: formEdit.kw ? parseFloat(formEdit.kw) : null,
         inversor_tipo: formEdit.inversor_tipo || null,
         inversor_cantidad: formEdit.inversor_cantidad ? parseInt(formEdit.inversor_cantidad) : null,
         inversor_capacidad_kw: formEdit.inversor_capacidad_kw ? parseFloat(formEdit.inversor_capacidad_kw) : null,
@@ -378,37 +377,46 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
       >
         {formEdit && (
           <>
-            <div className="form-group"><label>Vendedor</label><input value={formEdit.vendedor} onChange={e => setFormEdit(f => ({ ...f, vendedor: e.target.value }))} placeholder="Nombre del vendedor" /></div>
-            <div className="form-row">
-              <div className="form-group"><label>Cliente</label><input value={formEdit.cliente} onChange={e => setFormEdit(f => ({ ...f, cliente: e.target.value }))} /></div>
-              <div className="form-group"><label>Teléfono</label><input value={formEdit.telefono} onChange={e => setFormEdit(f => ({ ...f, telefono: e.target.value }))} /></div>
+            {/* Folio KENET — solo lectura (es la llave del proyecto) */}
+            <div className="form-group">
+              <label>Folio KENET</label>
+              <input value={proyecto.folio} readOnly disabled style={{ background: '#F3F4F6', color: 'var(--gris-secundario)', cursor: 'not-allowed' }} />
             </div>
-            <div className="form-group"><label>Correo del cliente</label><input type="email" value={formEdit.correo_cliente} onChange={e => setFormEdit(f => ({ ...f, correo_cliente: e.target.value }))} placeholder="cliente@ejemplo.com" /></div>
+            <div className="form-row">
+              <div className="form-group"><label>OV Odoo (S#####)</label><input value={formEdit.folio_odoo} onChange={e => setFormEdit(f => ({ ...f, folio_odoo: e.target.value }))} placeholder="S10050" /></div>
+              <div className="form-group"><label>Vendedor</label><input value={formEdit.vendedor} onChange={e => setFormEdit(f => ({ ...f, vendedor: e.target.value }))} placeholder="Nombre del vendedor" /></div>
+            </div>
+            <div className="form-group"><label>Cliente</label><input value={formEdit.cliente} onChange={e => setFormEdit(f => ({ ...f, cliente: e.target.value }))} required /></div>
+            <div className="form-group"><label>Correo del cliente <span className="text-gray text-xs">(opcional)</span></label><input type="email" value={formEdit.correo_cliente} onChange={e => setFormEdit(f => ({ ...f, correo_cliente: e.target.value }))} placeholder="cliente@ejemplo.com" /></div>
             <div className="form-group"><label>Dirección</label><input value={formEdit.direccion} onChange={e => setFormEdit(f => ({ ...f, direccion: e.target.value }))} /></div>
-            <div className="form-group"><label>Link de Google Maps</label><input type="url" value={formEdit.maps_url} onChange={e => setFormEdit(f => ({ ...f, maps_url: e.target.value }))} placeholder="https://maps.app.goo.gl/…" /></div>
+            <div className="form-group"><label>Link de Google Maps <span className="text-gray text-xs">(opcional)</span></label><input type="url" value={formEdit.maps_url} onChange={e => setFormEdit(f => ({ ...f, maps_url: e.target.value }))} placeholder="https://maps.app.goo.gl/…" /></div>
             <div className="form-row">
               <div className="form-group"><label>Zona</label>
                 <select value={formEdit.zona} onChange={e => setFormEdit(f => ({ ...f, zona: e.target.value }))}>
                   {['MTY', 'SLT', 'TRC', 'MVA'].map(z => <option key={z} value={z}>{z}</option>)}
                 </select>
               </div>
-              <div className="form-group"><label>OV Odoo</label><input value={formEdit.folio_odoo} onChange={e => setFormEdit(f => ({ ...f, folio_odoo: e.target.value }))} /></div>
-            </div>
-            <div className="form-group"><label>Cuadrilla</label>
-              <select value={formEdit.cuadrilla_id} onChange={e => setFormEdit(f => ({ ...f, cuadrilla_id: e.target.value }))}>
-                <option value="">Sin asignar</option>
-                {cuadrillas.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.zona})</option>)}
-              </select>
+              <div className="form-group"><label>Cuadrilla</label>
+                <select value={formEdit.cuadrilla_id} onChange={e => setFormEdit(f => ({ ...f, cuadrilla_id: e.target.value }))}>
+                  <option value="">Sin asignar</option>
+                  {cuadrillas.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.zona})</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="form-section-label">Equipo</div>
             <div className="form-row">
-              <div className="form-group"><label>Paneles</label><input type="number" value={formEdit.paneles} onChange={e => setFormEdit(f => ({ ...f, paneles: e.target.value }))} /></div>
-              <div className="form-group"><label>Potencia por panel (W)</label><input type="number" value={formEdit.panel_potencia_w} onChange={e => setFormEdit(f => ({ ...f, panel_potencia_w: e.target.value }))} /></div>
+              <div className="form-group"><label>Paneles</label><input type="number" min="0" placeholder="0" value={formEdit.paneles} onChange={e => setFormEdit(f => ({ ...f, paneles: e.target.value }))} /></div>
+              <div className="form-group"><label>Potencia por panel (W)</label><input type="number" min="0" placeholder="0" value={formEdit.panel_potencia_w} onChange={e => setFormEdit(f => ({ ...f, panel_potencia_w: e.target.value }))} /></div>
             </div>
-            <div className="form-group"><label>Marca de panel</label><input value={formEdit.panel_marca} onChange={e => setFormEdit(f => ({ ...f, panel_marca: e.target.value }))} /></div>
             <div className="form-row">
-              <div className="form-group"><label>Tipo de inversor</label>
+              <div className="form-group"><label>Marca de panel</label><input value={formEdit.panel_marca} onChange={e => setFormEdit(f => ({ ...f, panel_marca: e.target.value }))} placeholder="Ej: Trina, JA Solar" /></div>
+              <div className="form-group"><label>Tamaño del sistema (kWp)</label><input type="number" min="0" step="0.01" placeholder="0" value={formEdit.kw} onChange={e => setFormEdit(f => ({ ...f, kw: e.target.value }))} /></div>
+            </div>
+
+            <div className="form-section-label">Inversor</div>
+            <div className="form-row">
+              <div className="form-group"><label>Tipo</label>
                 <select value={formEdit.inversor_tipo} onChange={e => setFormEdit(f => ({ ...f, inversor_tipo: e.target.value }))}>
                   <option value="">Selecciona…</option>
                   <option value="central">Central</option>
@@ -416,16 +424,13 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
                   <option value="microinversor">Microinversor</option>
                 </select>
               </div>
-              <div className="form-group"><label>Cantidad de inversores</label><input type="number" value={formEdit.inversor_cantidad} onChange={e => setFormEdit(f => ({ ...f, inversor_cantidad: e.target.value }))} /></div>
+              <div className="form-group"><label>Cantidad de inversores</label><input type="number" min="0" placeholder="0" value={formEdit.inversor_cantidad} onChange={e => setFormEdit(f => ({ ...f, inversor_cantidad: e.target.value }))} /></div>
             </div>
             <div className="form-row">
-              <div className="form-group"><label>Capacidad del inversor (kW)</label><input type="number" step="0.1" value={formEdit.inversor_capacidad_kw} onChange={e => setFormEdit(f => ({ ...f, inversor_capacidad_kw: e.target.value }))} /></div>
-              <div className="form-group"><label>Marca de inversor</label><input value={formEdit.inversor_marca} onChange={e => setFormEdit(f => ({ ...f, inversor_marca: e.target.value }))} /></div>
+              <div className="form-group"><label>Capacidad del inversor (kW)</label><input type="number" min="0" step="0.1" placeholder="0" value={formEdit.inversor_capacidad_kw} onChange={e => setFormEdit(f => ({ ...f, inversor_capacidad_kw: e.target.value }))} /></div>
+              <div className="form-group"><label>Marca de inversor</label><input value={formEdit.inversor_marca} onChange={e => setFormEdit(f => ({ ...f, inversor_marca: e.target.value }))} placeholder="Ej: Growatt, Huawei" /></div>
             </div>
             <div className="form-group"><label>Notas</label><textarea value={formEdit.notas} onChange={e => setFormEdit(f => ({ ...f, notas: e.target.value }))} rows={2} /></div>
-            <div style={{ fontSize: 11, color: 'var(--gris-secundario)', padding: '6px 10px', background: '#F9FAFB', borderRadius: 6 }}>
-              El folio KENET no se edita (es la llave del proyecto). El tamaño (kWp) se recalcula solo.
-            </div>
           </>
         )}
       </Modal>

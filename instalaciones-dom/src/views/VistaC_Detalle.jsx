@@ -430,7 +430,8 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
               <div className="form-group"><label>Tipo de inversor</label>
                 <select value={formEdit.inversor_tipo} onChange={e => setFormEdit(f => ({ ...f, inversor_tipo: e.target.value }))}>
                   <option value="">Selecciona…</option>
-                  <option value="inversor">Inversor</option>
+                  <option value="central">Central</option>
+                  <option value="hibrido">Híbrido</option>
                   <option value="microinversor">Microinversor</option>
                 </select>
               </div>

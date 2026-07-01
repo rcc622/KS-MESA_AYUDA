@@ -30,7 +30,7 @@ function equipoChips(p) {
   }
   if (p.kw) chips.push(`⚡ ${p.kw} kWp`);
   if (p.inversor_tipo || p.inversor_capacidad_kw || p.inversor_marca) {
-    const tipo = p.inversor_tipo === 'microinversor' ? 'Microinversor' : 'Inversor';
+    const tipo = { central: 'Central', hibrido: 'Híbrido', microinversor: 'Microinversor' }[p.inversor_tipo] || (p.inversor_tipo || 'Inversor');
     const cant = p.inversor_cantidad ? `${p.inversor_cantidad}× ` : '';
     const det = [p.inversor_capacidad_kw ? `${p.inversor_capacidad_kw} kW` : null, p.inversor_marca].filter(Boolean).join(' · ');
     chips.push(`🔌 ${cant}${tipo}${det ? ` (${det})` : ''}`);

@@ -17,7 +17,7 @@ const EJEMPLO = {
   folio: 'MY-2026-0101', folio_odoo: 'S57443', cliente: 'Juan Pérez', telefono: '8112345678',
   direccion: 'Calle Falsa 123, Monterrey N.L.', zona: 'MTY', fecha_agenda: '2026-07-10',
   paneles: 12, panel_potencia_w: 600, panel_marca: 'Trina',
-  inversor_tipo: 'inversor', inversor_cantidad: 1, inversor_capacidad_kw: 6, inversor_marca: 'Growatt',
+  inversor_tipo: 'central', inversor_cantidad: 1, inversor_capacidad_kw: 6, inversor_marca: 'Growatt',
   notas: 'Ejemplo — borra esta fila antes de importar',
 };
 
@@ -61,6 +61,15 @@ const normalizarZona = (v) => {
   return ZONA_ALIAS[key] || (ZONAS.includes(s.toUpperCase()) ? s.toUpperCase() : null);
 };
 const numEntre = (v, min, max) => { const n = parseInt(v, 10); return (!isNaN(n) && n >= min && n <= max) ? n : null; };
+
+// Tipo de inversor válido: central | híbrido | microinversor (normaliza acentos/mayúsculas).
+const TIPOS_INVERSOR = ['central', 'hibrido', 'microinversor'];
+const normTipoInversor = (v) => {
+  const s = sanitizar(v);
+  if (!s) return null;
+  const k = s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  return TIPOS_INVERSOR.includes(k) ? k : null;
+};
 
 // Mapeo DETERMINISTA de nombres de columna comunes (Odoo/Excel) → campo KENET.
 // Se aplica solo, sin IA, al cargar el archivo. La IA queda como refuerzo opcional.
@@ -131,8 +140,7 @@ const validarFila = (r, idx) => {
   if (r.zona && !normalizarZona(r.zona)) avisos.push(`zona "${sanitizar(r.zona)}" no reconocida (se omite)`);
   if (r.paneles && numEntre(r.paneles, 1, 999) == null) avisos.push('paneles fuera de 1–999 (se omite)');
   if (r.inversor_cantidad && numEntre(r.inversor_cantidad, 0, 99) == null) avisos.push('cantidad de inversor inválida (se omite)');
-  const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
-  if (tipo && !['inversor', 'microinversor'].includes(tipo)) avisos.push(`inversor tipo "${sanitizar(r.inversor_tipo)}" no reconocido (se omite)`);
+  if (sanitizar(r.inversor_tipo) && !normTipoInversor(r.inversor_tipo)) avisos.push(`inversor tipo "${sanitizar(r.inversor_tipo)}" no reconocido (se omite)`);
   if (r.fecha_agenda && !fechaISO(r.fecha_agenda)) avisos.push('fecha no reconocida (se omite)');
   if (r.direccion && String(r.direccion).length > 500) avisos.push('dirección recortada a 500');
   if (r.notas && String(r.notas).length > 1000) avisos.push('notas recortadas a 1000');
@@ -142,7 +150,6 @@ const validarFila = (r, idx) => {
 const mapear = (r) => {
   const paneles = numEntre(r.paneles, 1, 999);
   const zona = normalizarZona(r.zona);
-  const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
   const capKw = r.inversor_capacidad_kw != null && r.inversor_capacidad_kw !== '' ? parseFloat(r.inversor_capacidad_kw) : null;
   return {
     folio: sanitizar(r.folio, 100),
@@ -156,7 +163,7 @@ const mapear = (r) => {
     kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,
     panel_potencia_w: numEntre(r.panel_potencia_w, 1, 100000),
     panel_marca: sanitizar(r.panel_marca, 100),
-    inversor_tipo: tipo === 'microinversor' ? 'microinversor' : (tipo === 'inversor' ? 'inversor' : null),
+    inversor_tipo: normTipoInversor(r.inversor_tipo),
     inversor_cantidad: numEntre(r.inversor_cantidad, 0, 99),
     inversor_capacidad_kw: (capKw != null && !isNaN(capKw)) ? capKw : null,
     inversor_marca: sanitizar(r.inversor_marca, 100),

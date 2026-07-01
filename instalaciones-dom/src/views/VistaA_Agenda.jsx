@@ -369,7 +369,8 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
               <label>Tipo</label>
               <select value={nuevoProy.inversor_tipo} onChange={e => setNuevoProy(p => ({ ...p, inversor_tipo: e.target.value }))}>
                 <option value="">Selecciona…</option>
-                <option value="inversor">Inversor</option>
+                <option value="central">Central</option>
+                <option value="hibrido">Híbrido</option>
                 <option value="microinversor">Microinversor</option>
               </select>
             </div>

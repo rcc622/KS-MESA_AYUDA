@@ -62,6 +62,40 @@ const normalizarZona = (v) => {
 };
 const numEntre = (v, min, max) => { const n = parseInt(v, 10); return (!isNaN(n) && n >= min && n <= max) ? n : null; };
 
+// Mapeo DETERMINISTA de nombres de columna comunes (Odoo/Excel) → campo KENET.
+// Se aplica solo, sin IA, al cargar el archivo. La IA queda como refuerzo opcional.
+const normHeader = (h) => String(h).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.#°]/g, '').replace(/\s+/g, ' ').trim();
+const ALIAS_COLUMNAS = {
+  'folio': 'folio', 'folio ks': 'folio', 'folio kenet': 'folio',
+  'nombre': 'cliente', 'cliente': 'cliente', 'nombre cliente': 'cliente', 'nombre del cliente': 'cliente', 'cliente final': 'cliente', 'razon social': 'cliente',
+  'folio odoo': 'folio_odoo', 'folio de factura': 'folio_odoo', 'factura': 'folio_odoo', 'ov': 'folio_odoo', 'ov odoo': 'folio_odoo', 'orden de venta': 'folio_odoo',
+  'telefono': 'telefono', 'tel': 'telefono', 'celular': 'telefono', 'whatsapp': 'telefono', 'movil': 'telefono',
+  'direccion': 'direccion', 'domicilio': 'direccion', 'dir': 'direccion', 'ubicacion': 'direccion',
+  'zona': 'zona', 'ciudad': 'zona', 'plaza': 'zona', 'sucursal': 'zona',
+  'fecha': 'fecha_agenda', 'fecha agenda': 'fecha_agenda', 'fecha de agenda': 'fecha_agenda', 'fecha instalacion': 'fecha_agenda', 'fecha de instalacion': 'fecha_agenda', 'fecha programada': 'fecha_agenda',
+  'paneles': 'paneles', 'no paneles': 'paneles', 'num paneles': 'paneles', 'numero de paneles': 'paneles', 'cantidad de paneles': 'paneles', 'modulos': 'paneles', 'no de paneles': 'paneles',
+  'potencia panel': 'panel_potencia_w', 'watts panel': 'panel_potencia_w', 'w panel': 'panel_potencia_w', 'potencia por panel': 'panel_potencia_w',
+  'marca panel': 'panel_marca', 'marca de panel': 'panel_marca', 'panel marca': 'panel_marca', 'tipo panel': 'panel_marca', 'tipo de panel': 'panel_marca',
+  'inversor': 'inversor_tipo', 'tipo inversor': 'inversor_tipo', 'tipo de inversor': 'inversor_tipo',
+  'cantidad inversor': 'inversor_cantidad', 'no inversores': 'inversor_cantidad', 'numero de inversores': 'inversor_cantidad',
+  'capacidad inversor': 'inversor_capacidad_kw', 'kw inversor': 'inversor_capacidad_kw', 'capacidad kw': 'inversor_capacidad_kw',
+  'marca inversor': 'inversor_marca', 'marca de inversor': 'inversor_marca',
+  'notas': 'notas', 'nota': 'notas', 'comentarios': 'notas', 'comentarios cxc': 'notas', 'observaciones': 'notas', 'comentario': 'notas',
+};
+const campoDe = (header) => {
+  const n = normHeader(header);
+  return ALIAS_COLUMNAS[n] || (COLUMNAS.includes(n) ? n : null);
+};
+// Convierte una fila con encabezados arbitrarios a una con campos canónicos KENET.
+const aplicarAlias = (r) => {
+  const o = {};
+  for (const k in r) {
+    const campo = campoDe(k);
+    if (campo && (o[campo] == null || o[campo] === '')) o[campo] = r[k];
+  }
+  return o;
+};
+
 // Solo folio + cliente son OBLIGATORIOS (bloquean la fila). Lo demás, si viene raro,
 // es un AVISO: ese dato se omite pero la fila SÍ se importa.
 const validarFila = (r, idx) => {
@@ -146,7 +180,8 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rowsRaw = XLSX.utils.sheet_to_json(ws, { defval: '' });  // encabezados ORIGINALES
       if (rowsRaw.length > MAX_FILAS) { alert(`El archivo tiene ${rowsRaw.length} filas. El límite es ${MAX_FILAS} por importación.`); return; }
-      const rows = rowsRaw.map(r => { const o = {}; for (const k in r) o[String(k).trim().toLowerCase()] = r[k]; return o; }); // normaliza encabezados
+      // Auto-mapea nombres de columna comunes a los campos KENET (sin IA).
+      const rows = rowsRaw.map(aplicarAlias);
       setFilasRaw(rowsRaw);
       setFilas(rows);
       setValidaciones(rows.map((r, i) => validarFila(r, i)));
@@ -165,22 +200,30 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
     if (!filasRaw.length) return;
     setMapeando(true); setErrorIA('');
     try {
-      const provider = localStorage.getItem('ks_ia_provider') || 'llama';
       const columnas = Object.keys(filasRaw[0] || {});
-      const muestra = filasRaw.slice(0, 3);
-      const { mapping } = await mapearColumnasIA(columnas, muestra, { provider });
-      if (!mapping || !Object.keys(mapping).length) throw new Error('La IA no devolvió un mapeo. Intenta con otro motor o revisa el archivo.');
-      // Normaliza a { columna_origen: campo_destino }. La IA a veces invierte la
-      // dirección (campo→columna); aquí lo detectamos y corregimos.
+      // 1) Base DETERMINISTA (diccionario de alias, sin IA): { columna_origen: campo }
       const mapeoNorm = {};
-      for (const [a, b] of Object.entries(mapping)) {
-        if (COLUMNAS.includes(b)) mapeoNorm[a] = b;        // a=origen, b=campo destino (esperado)
-        else if (COLUMNAS.includes(a)) mapeoNorm[b] = a;   // invertido: a=campo, b=origen
+      for (const col of columnas) {
+        const campo = campoDe(col);
+        if (campo && !Object.values(mapeoNorm).includes(campo)) mapeoNorm[col] = campo;
       }
-      if (!Object.keys(mapeoNorm).length) {
-        throw new Error('La IA no pudo mapear ninguna columna a los campos KENET. Prueba con otro motor o revisa que el archivo tenga encabezados claros.');
+      // 2) IA como REFUERZO para lo que el diccionario no reconoció (tolerante a fallos).
+      try {
+        const provider = localStorage.getItem('ks_ia_provider') || 'llama';
+        const muestra = filasRaw.slice(0, 3);
+        const { mapping } = await mapearColumnasIA(columnas, muestra, { provider });
+        for (const [a, b] of Object.entries(mapping || {})) {
+          let src, dest;
+          if (COLUMNAS.includes(b)) { src = a; dest = b; }        // origen→destino
+          else if (COLUMNAS.includes(a)) { src = b; dest = a; }   // invertido
+          else continue;
+          if (!(src in mapeoNorm) && !Object.values(mapeoNorm).includes(dest)) mapeoNorm[src] = dest;
+        }
+      } catch (e) {
+        if (!Object.keys(mapeoNorm).length) throw e;   // sin base determinista, sí es error
+        setErrorIA('La IA no respondió, pero mapeé las columnas conocidas automáticamente. Revisa el mapeo.');
       }
-      // Aplica el mapeo: arma filas nuevas con los nombres de campo canónicos.
+      if (!Object.keys(mapeoNorm).length) throw new Error('No se pudo mapear ninguna columna a los campos KENET. Revisa que el archivo tenga encabezados claros.');
       const nuevas = filasRaw.map(r => {
         const o = {};
         for (const src in mapeoNorm) { if (src in r) o[mapeoNorm[src]] = r[src]; }

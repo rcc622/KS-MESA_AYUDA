@@ -257,11 +257,13 @@ async function mapearColumnas(provider: string, columnas: string[], muestra: any
   const sys = `Eres un asistente que mapea las columnas de un Excel arbitrario al esquema de importación de proyectos de KENET Solar. Campos DESTINO disponibles:\n- ${CAMPOS_DESTINO.join('\n- ')}\n\nDevuelve SOLO un objeto JSON con esta forma exacta:\n{"mapping": {"<columna_de_origen>": "<campo_destino_sin_paréntesis_o_null>"}, "notas": "una línea"}\nReglas: usa el nombre simple del campo destino (ej. "fecha_agenda", "inversor_tipo"). Si una columna de origen no corresponde a ningún campo, su valor es null. No inventes columnas que no estén en la lista de origen.`;
   const userMsg = `Columnas de origen: ${JSON.stringify(columnas)}\nFilas de muestra (para entender el contenido): ${JSON.stringify(muestra)}\nDevuelve el JSON de mapeo.`;
 
+  // NOTA: no usamos response_format:'json_object' porque Groq lo valida en duro y
+  // devuelve 400 (json_validate_failed) cuando el modelo no acierta el JSON perfecto.
+  // En vez de eso pedimos JSON en el prompt y lo parseamos de forma tolerante.
   const cuerpo: any = {
     model,
     messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
     temperature: 0.1,
-    response_format: { type: 'json_object' },
   };
   // Solo Qwen acepta reasoning_format (Llama devuelve 400 si se le manda).
   if (url.includes('groq.com') && usarQwen) cuerpo.reasoning_format = 'hidden';
@@ -274,9 +276,14 @@ async function mapearColumnas(provider: string, columnas: string[], muestra: any
   if (resp.status === 429) throw new Error('El motor de IA llegó a su límite por minuto. Espera ~30 segundos y reintenta.');
   if (!resp.ok) { const txt = await resp.text(); throw new Error(`IA ${resp.status}: ${txt}`); }
   const data = await resp.json();
-  const txt = data.choices?.[0]?.message?.content || '{}';
-  let parsed: any;
-  try { parsed = JSON.parse(txt); } catch { parsed = {}; }
+  // Parseo tolerante: quita fences ```json y extrae el objeto { ... }.
+  const raw = data.choices?.[0]?.message?.content || '{}';
+  const limpio = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const ini = limpio.indexOf('{');
+  const fin = limpio.lastIndexOf('}');
+  const jsonStr = (ini >= 0 && fin > ini) ? limpio.slice(ini, fin + 1) : limpio;
+  let parsed: any = {};
+  try { parsed = JSON.parse(jsonStr); } catch { parsed = {}; }
   return { mapping: parsed.mapping || {}, notas: parsed.notas || '', provider };
 }
 

@@ -25,6 +25,12 @@ tipos de trámite CFE.
   de OAuth, **redeploy `gcal-auth`**, reconectar Google con la cuenta que enviará, poner
   secretos `NOTIFY_PROVIDER=gmail` + `NOTIFY_GMAIL_EMAIL` + `NOTIFY_FROM`, redeploy `notificar`.
   Con Gmail se puede enviar a cualquier correo. Detalle en `functions/notificar/README.md`.
+- **TODAS las integraciones de API** quedan a cargo de Pablo (Google Calendar/Drive/Gmail y
+  la futura **TOKU**). Randall dará acceso a Pablo en **Google Cloud** (IAM → Editor) y en
+  **Supabase** (Team → administrar Edge Functions/Secrets) para que opere sin esperar a Randall.
+- **Subir carpetas de conocimiento de procesos** (de Drive) al repo, en `BASES/Procesos/`:
+  los **Words → Markdown con markitdown**; los **diagramas .svg → subir tal cual** (GitHub los
+  renderiza). Así quedan versionados y cargables como contexto para la IA.
 
 **🔥 PRIORITARIO:**
 - **Integración API TOKU** — para automatizar el estatus de cobro y montos reales (hoy el

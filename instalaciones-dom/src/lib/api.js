@@ -289,7 +289,7 @@ export async function upsertProyectos(rows) {
 export async function getTramitesCFE({ estado, tipo } = {}) {
   let q = supabase
     .from('cfe_tramites')
-    .select('*, proyecto:proyectos(folio,cliente,zona,maps_url), responsable:usuarios!cfe_tramites_responsable_id_fkey(id,nombre)')
+    .select('*, proyecto:proyectos(folio,folio_odoo,cliente,zona,maps_url), responsable:usuarios!cfe_tramites_responsable_id_fkey(id,nombre)')
     .order('created_at', { ascending: false });
   if (estado) q = q.eq('estado', estado);
   if (tipo)   q = q.eq('tipo', tipo);

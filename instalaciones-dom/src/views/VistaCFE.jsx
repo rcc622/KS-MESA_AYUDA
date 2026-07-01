@@ -177,8 +177,8 @@ export default function VistaCFE({ usuarioActual }) {
                 {porIniciar.map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--borde)', paddingTop: 8 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>{p.cliente} <span className="text-xs text-gray">· {p.folio}</span></div>
-                      <div className="text-xs text-gray">{p.zona}{p.fecha_instalacion ? ` · instalado ${p.fecha_instalacion}` : ''}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{p.cliente} <span className="text-xs text-gray">· {p.folio || '(sin folio KENET)'}</span></div>
+                      <div className="text-xs text-gray">{p.folio_odoo ? `OV ${p.folio_odoo} · ` : ''}{p.zona}{p.fecha_instalacion ? ` · instalado ${p.fecha_instalacion}` : ''}</div>
                     </div>
                     {esGestor && <button className="btn btn-primary btn-sm" onClick={() => iniciarCFE(p)}>📋 Iniciar trámite CFE</button>}
                   </div>
@@ -205,8 +205,8 @@ export default function VistaCFE({ usuarioActual }) {
                 <div key={t.id} className="card"><div className="card-body" style={{ padding: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{t.proyecto?.cliente || 'Proyecto'} <span className="text-xs text-gray">· {t.proyecto?.folio}</span></div>
-                      <div className="text-sm" style={{ marginTop: 2 }}>{TIPO_LABEL[t.tipo] || t.tipo}{t.folio_cfe ? ` · CFE ${t.folio_cfe}` : ''}{t.proyecto?.zona ? ` · ${t.proyecto.zona}` : ''}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{t.proyecto?.cliente || 'Proyecto'} <span className="text-xs text-gray">· {t.proyecto?.folio || '(sin folio KENET)'}</span></div>
+                      <div className="text-sm" style={{ marginTop: 2 }}>{t.proyecto?.folio_odoo ? `OV ${t.proyecto.folio_odoo} · ` : ''}{TIPO_LABEL[t.tipo] || t.tipo}{t.folio_cfe ? ` · CFE ${t.folio_cfe}` : ''}{t.proyecto?.zona ? ` · ${t.proyecto.zona}` : ''}</div>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 12, background: e.bg, color: e.color, whiteSpace: 'nowrap' }}>{e.l}</span>
                   </div>

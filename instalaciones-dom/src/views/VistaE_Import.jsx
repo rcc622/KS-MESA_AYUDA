@@ -155,6 +155,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
   const [mapeando, setMapeando] = useState(false);  // IA mapeando columnas
   const [mapeoIA, setMapeoIA] = useState(null);     // { columna_origen: campo_destino }
   const [errorIA, setErrorIA] = useState('');
+  const [filasIgnoradas, setFilasIgnoradas] = useState(0); // filas sin folio (totales/vacías) descartadas
   const fileRef = useRef();
 
   const descargarPlantilla = async () => {
@@ -180,9 +181,12 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rowsRaw = XLSX.utils.sheet_to_json(ws, { defval: '' });  // encabezados ORIGINALES
       if (rowsRaw.length > MAX_FILAS) { alert(`El archivo tiene ${rowsRaw.length} filas. El límite es ${MAX_FILAS} por importación.`); return; }
-      // Auto-mapea nombres de columna comunes a los campos KENET (sin IA).
-      const rows = rowsRaw.map(aplicarAlias);
-      setFilasRaw(rowsRaw);
+      // Auto-mapea nombres de columna comunes a los campos KENET (sin IA) y descarta
+      // filas SIN folio (totales, resúmenes y renglones vacíos que traen los reportes).
+      const rawReal = rowsRaw.filter(r => sanitizar(aplicarAlias(r).folio));
+      const rows = rawReal.map(aplicarAlias);
+      setFilasIgnoradas(rowsRaw.length - rawReal.length);
+      setFilasRaw(rawReal);
       setFilas(rows);
       setValidaciones(rows.map((r, i) => validarFila(r, i)));
       setMapeoIA(null); setErrorIA('');
@@ -264,7 +268,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
     }
   };
 
-  const reiniciar = () => { setArchivo(null); setFilas([]); setFilasRaw([]); setValidaciones([]); setEtapa('seleccion'); setResultado(null); setMapeoIA(null); setErrorIA(''); };
+  const reiniciar = () => { setArchivo(null); setFilas([]); setFilasRaw([]); setValidaciones([]); setEtapa('seleccion'); setResultado(null); setMapeoIA(null); setErrorIA(''); setFilasIgnoradas(0); };
 
   return (
     <>
@@ -360,6 +364,12 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
                   <div style={{ fontSize: 11, color: filasConError > 0 ? '#991B1B' : 'var(--gris-secundario)' }}>Filas con error (se omiten)</div>
                 </div>
               </div>
+
+              {filasIgnoradas > 0 && (
+                <div style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', marginBottom: 16, fontSize: 12, color: 'var(--gris-secundario)' }}>
+                  ℹ️ Se ignoraron <strong>{filasIgnoradas}</strong> filas sin folio (totales, resúmenes o renglones vacíos del archivo). Solo se procesan las filas que son proyectos reales.
+                </div>
+              )}
 
               {filasConError > 0 && (
                 <div style={{ background: '#FFF4F4', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>

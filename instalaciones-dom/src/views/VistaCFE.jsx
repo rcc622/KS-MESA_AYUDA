@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getTramitesCFE, crearTramiteCFE, actualizarTramiteCFE, getProyectos, agregarBitacora, mensajeError } from '../lib/api';
+import { notificarCobranza } from '../lib/notificaciones';
 import Modal from '../components/Modal';
 
 const TIPOS = [
@@ -99,6 +100,7 @@ export default function VistaCFE({ usuarioActual }) {
           usuario_id: usuarioActual?.id ?? null,
         });
       }
+      notificarCobranza('medidor_instalado', t.proyecto);   // hito: CFE concluido
       cargar();
     } catch (e) { alert(mensajeError(e)); }
   };
@@ -116,6 +118,7 @@ export default function VistaCFE({ usuarioActual }) {
         descripcion: '📋 Trámite CFE iniciado (la instalación quedó terminada).',
         usuario_id: usuarioActual?.id ?? null,
       });
+      notificarCobranza('cfe_iniciado', p);   // hito: CFE iniciado
       cargar();
     } catch (e) { alert(mensajeError(e)); }
   };

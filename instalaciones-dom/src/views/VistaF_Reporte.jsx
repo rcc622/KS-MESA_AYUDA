@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError, subirEvidencia } from '../lib/api';
+import { notificarCobranza } from '../lib/notificaciones';
 import { conectarGoogleCalendar } from '../lib/gcal';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
@@ -214,6 +215,8 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
         descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles. Checklist: ${pct}%. Fotos: ${fotos.antes.length + fotos.durante.length + fotos.despues.length}. Firma: ${nombreFirma}. Obs: ${observaciones || 'ninguna'}`,
         usuario_id: usuarioActual?.id ?? null,
       });
+      // Hito: instalación terminada → aviso a Cobranza (se puede cobrar enganche). Best-effort.
+      notificarCobranza('instalacion_terminada', proyecto);
       // Respaldo de evidencias en Supabase Storage (best-effort, no bloquea el envío)
       const folio = proyecto?.folio || 'sin-folio';
       const ts = Date.now();

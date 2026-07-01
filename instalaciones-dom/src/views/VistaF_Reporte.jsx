@@ -465,7 +465,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
                   <div className="text-xs text-gray mb-8">Resumen</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
                     <div><span className="text-gray">Checklist:</span> <strong style={{ color: pct === 100 ? 'var(--verde)' : 'var(--ambar)' }}>{pct}%</strong></div>
-                    <div><span className="text-gray">Fotos:</span> <strong>{fotos.antes.length + fotos.durante.length + fotos.despues.length}</strong></div>
+                    <div><span className="text-gray">Fotos:</span> <strong>{fotos.length}</strong></div>
                     <div><span className="text-gray">Paneles:</span> <strong>{proyecto?.paneles ?? '—'}</strong></div>
                     <div><span className="text-gray">kWp:</span> <strong>{proyecto?.kw ?? '—'}</strong></div>
                   </div>

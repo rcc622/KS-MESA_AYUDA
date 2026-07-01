@@ -1,5 +1,36 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 7) · Pablo + Claude · Integración Google Drive para evidencias de instaladores
+
+Se completó la integración de Google Drive para que los instaladores suban sus evidencias fotográficas
+directamente a la carpeta de empresa compartida, con subcarpeta por nombre de cliente.
+
+**Qué se movió:**
+- `gcal-auth/index.ts`: scope cambiado de `drive.file` → `drive` completo (necesario para escribir en
+  carpetas compartidas de empresa que no son propiedad del instalador). Redesplegado en Supabase.
+- `drive-upload/index.ts`: ahora lee `drive_folder_id` del perfil del instalador para saber en qué
+  carpeta raíz subir (en vez del secreto global `DRIVE_FOLDER_ID`).
+- `VistaF_Reporte.jsx`: subcarpeta en Drive ahora usa `proyecto.cliente` (nombre del cliente) en vez
+  del folio. Confirmado funcionando en prueba real.
+- `sql/`: columna `drive_folder_id` agregada a tabla `usuarios` (ALTER TABLE).
+- `VistaG_Usuarios.jsx`: en los modales de crear/editar usuario, aparece campo "Carpeta Drive" cuando
+  el rol es Instalador. El admin pega el ID de la carpeta de Drive de cada instalador.
+
+**Estructura resultante en Drive:**
+```
+📁 [Carpeta del instalador]  ← drive_folder_id en su perfil
+  └── 📁 Nombre del cliente  ← creada automáticamente
+        ├── folio - foto-1.jpg
+        └── folio - reporte.pdf
+```
+
+**Pendiente — terminar el alta de instaladores:**
+- Cada instalador existente necesita que se le ponga su `drive_folder_id` en Gestión de Usuarios.
+- Cada instalador debe pulsar **"↺ Reconectar Google"** para que su token incluya el nuevo scope `drive`.
+- Sin reconectar, Drive da error de permisos (las fotos igual quedan en Supabase Storage).
+
+---
+
 ## 2026-07-01 (cont. 6) · Randall + Claude · Sección de Morosos en Cobranza (lista para TOKU)
 
 Se construyó la **sección de Morosos** del módulo de Cobranza con la política oficial de KENET,

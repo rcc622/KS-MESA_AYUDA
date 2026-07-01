@@ -27,12 +27,11 @@ en subdominios). **El código ya soporta el proveedor `gmail`.** Pasos:
 - **Redeploy `notificar`.**
 - Detalle: `instalaciones-dom/supabase/functions/notificar/README.md`.
 
-### 3. API de Google Drive (evidencias · Opción A)
-Subir evidencias a Drive sin llave JSON (OAuth). Código listo. Pasos:
-- Habilitar **Google Drive API** + scope `drive.file` en el consent.
-- **Redeploy `gcal-auth`**, **deploy `drive-upload`**.
-- Reconectar Google + secreto `DRIVE_OWNER_EMAIL` (opcional `DRIVE_FOLDER_ID`).
-- Detalle: `instalaciones-dom/supabase/functions/drive-upload/README.md`.
+### 3. API de Google Drive (evidencias) — ✅ Integración lista · Falta alta de instaladores
+Subir evidencias funciona. Pendiente operativo:
+- En **Gestión de Usuarios** → editar cada instalador → pegar el ID de su carpeta de Drive.
+- Cada instalador debe pulsar **"↺ Reconectar Google"** para obtener el scope `drive` completo.
+- Sin ese paso, las evidencias igual se guardan en Supabase Storage (funciona como respaldo).
 
 ### 4. Resto de integraciones de API
 Google Calendar (ya operativo) y lo que surja quedan bajo su responsabilidad.
@@ -70,6 +69,7 @@ De Drive → repo, en **`BASES/Procesos/`**:
 ---
 
 ## ✅ Hecho (referencia)
+- Integración Google Drive para evidencias: scope `drive`, carpeta por instalador (`drive_folder_id`), subcarpeta por cliente — 2026-07-01.
 - `sql/migracion_cfe_tipos.sql` corrido (tipos CFE nuevos activos) — 2026-07-01.
 - Módulo de Cobranza (KPI efectividad, agenda confirmada, hitos por cobrar) — 2026-07-01.
 - Correos a Cobranza (Resend) probados a correo propio — 2026-07-01.

@@ -33,6 +33,60 @@ const EVENTOS: Record<string, { emoji: string; titulo: string; accion: string }>
 
 const esc = (s: string) => String(s ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] || c));
 
+// Base64 de una cadena UTF-8 (robusto en Deno, sin unescape).
+const b64utf8 = (str: string) => {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+};
+
+// access_token fresco a partir del refresh_token de Google (mismo patrón que Calendar/Drive).
+async function getAccessToken(refreshToken: string): Promise<string> {
+  const resp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: Deno.env.get('GOOGLE_CLIENT_ID')!,
+      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  if (!resp.ok) throw new Error(`Error al refrescar token de Google: ${await resp.text()}`);
+  const data = await resp.json();
+  if (!data.access_token) throw new Error('Google no devolvió access_token.');
+  return data.access_token;
+}
+
+// Envía el correo vía la API de Gmail con el OAuth de una cuenta de Workspace.
+async function enviarGmail(supaAdmin: any, to: string[], from: string, subject: string, html: string) {
+  const fromEmail = Deno.env.get('NOTIFY_GMAIL_EMAIL') || Deno.env.get('DRIVE_OWNER_EMAIL');
+  if (!fromEmail) throw new Error('Falta el secreto NOTIFY_GMAIL_EMAIL (cuenta de Workspace que envía).');
+  const { data: cuenta } = await supaAdmin.from('usuarios').select('google_refresh_token').eq('email', fromEmail).maybeSingle();
+  if (!cuenta?.google_refresh_token) throw new Error(`La cuenta ${fromEmail} no ha conectado Google con permiso de Gmail. Reconéctala desde la plataforma.`);
+  const token = await getAccessToken(cuenta.google_refresh_token);
+
+  const subjectEnc = `=?UTF-8?B?${b64utf8(subject)}?=`;  // encoded-word para acentos/emojis
+  const raw = [
+    `To: ${to.join(', ')}`,
+    `From: ${from}`,
+    `Subject: ${subjectEnc}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    '',
+    html,
+  ].join('\r\n');
+  const rawUrl = b64utf8(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const resp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ raw: rawUrl }),
+  });
+  if (!resp.ok) throw new Error(`Gmail API ${resp.status}: ${await resp.text()}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS });
@@ -83,7 +137,13 @@ Deno.serve(async (req) => {
       </div>`;
 
     const provider = Deno.env.get('NOTIFY_PROVIDER') || 'resend';
-    if (provider === 'resend') {
+    if (provider === 'gmail') {
+      // Envía vía la API de Gmail con el OAuth de una cuenta de Workspace (misma
+      // infraestructura que Calendar/Drive). Ideal cuando el dominio no se puede
+      // verificar en Resend (ej. DNS en Wix).
+      const supaAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      await enviarGmail(supaAdmin, to, from, subject, html);
+    } else if (provider === 'resend') {
       const key = Deno.env.get('RESEND_API_KEY');
       if (!key) throw new Error('Falta el secreto RESEND_API_KEY en Supabase.');
       const r = await fetch('https://api.resend.com/emails', {
@@ -93,7 +153,7 @@ Deno.serve(async (req) => {
       });
       if (!r.ok) { const t = await r.text(); throw new Error(`Resend ${r.status}: ${t}`); }
     } else {
-      throw new Error(`Proveedor de correo '${provider}' aún no implementado (usa 'resend').`);
+      throw new Error(`Proveedor de correo '${provider}' no soportado (usa 'resend' o 'gmail').`);
     }
 
     return json({ ok: true, enviados: to.length });

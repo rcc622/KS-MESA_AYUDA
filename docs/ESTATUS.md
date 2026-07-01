@@ -20,8 +20,11 @@ tipos de trámite CFE.
 **⏳ Pendientes de PABLO (reasignados):**
 - **Google Drive Opción A:** habilitar Drive API, redeploy `gcal-auth`, deploy `drive-upload`,
   reconectar Google + `DRIVE_OWNER_EMAIL`. (Código listo en main.)
-- **Correos a compañeros de Cobranza:** verificar dominio en Resend (`kenetsolar.com`) para
-  enviar a otros correos y cambiar `NOTIFY_FROM` a `notificaciones@kenetsolar.com`.
+- **Correos a compañeros vía GMAIL (Resend bloqueado por DNS en Wix):** el código ya soporta
+  proveedor `gmail` en la función `notificar`. Falta: agregar scope `gmail.send` al consent
+  de OAuth, **redeploy `gcal-auth`**, reconectar Google con la cuenta que enviará, poner
+  secretos `NOTIFY_PROVIDER=gmail` + `NOTIFY_GMAIL_EMAIL` + `NOTIFY_FROM`, redeploy `notificar`.
+  Con Gmail se puede enviar a cualquier correo. Detalle en `functions/notificar/README.md`.
 
 **🔥 PRIORITARIO:**
 - **Integración API TOKU** — para automatizar el estatus de cobro y montos reales (hoy el

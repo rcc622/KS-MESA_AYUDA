@@ -235,9 +235,9 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
       (async () => {
         for (let i = 0; i < fotos.length; i++) {
           const ext = (fotos[i].dataUrl || '').includes('image/png') ? 'png' : 'jpg';
-          await subirEvidenciaDrive(`${folio} - foto-${i + 1}.${ext}`, fotos[i].dataUrl, folio);
+          await subirEvidenciaDrive(`${folio} - foto-${i + 1}.${ext}`, fotos[i].dataUrl, proyecto.cliente);
         }
-        await subirEvidenciaDrive(`${folio} - reporte.pdf`, pdfDataUrl, folio);
+        await subirEvidenciaDrive(`${folio} - reporte.pdf`, pdfDataUrl, proyecto.cliente);
       })();
       await compartirPDF(doc);
       setEnviado(true);

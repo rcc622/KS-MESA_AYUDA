@@ -10,6 +10,25 @@
 
 ---
 
+## 2026-07-01 (cont.) · Randall + Claude · Endurecimiento Fase 2 (mapeo IA robusto) + reconciliación con Pablo
+
+Retomamos Fase 2/3 para testeo. Se reconcilió el trabajo de Randall (IA, Fase 2/3) con el
+de Pablo (Google Calendar, usuarios) en `main` sin perder nada. Endurecí el "Formatear con
+IA" del import para que no falle si el modelo invierte la dirección del mapeo.
+
+**Qué se movió:**
+- `VistaE_Import.jsx`: el mapeo de IA ahora **normaliza a origen→destino** aunque el modelo
+  lo devuelva invertido (campo→columna); si no mapea nada, error claro. Simulación OK.
+- Se verificó que `bitacora.tipo` no tiene CHECK → el tipo `'cfe'` (alerta a Cobranza) es válido.
+- Nota de onboarding para devs nuevos (`docs/ONBOARDING.md`).
+
+**Pendiente / a probar (Randall):**
+- Fase 2: subir un Excel con columnas raras → 🪄 Formatear con IA → revisar mapeo → importar.
+- Fase 3 CFE: crear trámite tipo medidor bidireccional → "Medidor llegó → avisar a Cobranza".
+- Reportar lo que falle para afinar en caliente.
+
+---
+
 ## 2026-06-30 (noche, cont. 3) · Pablo + Claude · ✅ Orden por fecha en vista del instalador + formato evento Calendar
 
 Dos mejoras en esta sesión: la vista de instalaciones del instalador ahora ordena por fecha más próxima por defecto, y el evento de Google Calendar se ajustó para que su descripción coincida con el formato del mensaje de WhatsApp.

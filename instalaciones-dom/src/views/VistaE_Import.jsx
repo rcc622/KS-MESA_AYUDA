@@ -141,18 +141,25 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
       const muestra = filasRaw.slice(0, 3);
       const { mapping } = await mapearColumnasIA(columnas, muestra, { provider });
       if (!mapping || !Object.keys(mapping).length) throw new Error('La IA no devolvió un mapeo. Intenta con otro motor o revisa el archivo.');
+      // Normaliza a { columna_origen: campo_destino }. La IA a veces invierte la
+      // dirección (campo→columna); aquí lo detectamos y corregimos.
+      const mapeoNorm = {};
+      for (const [a, b] of Object.entries(mapping)) {
+        if (COLUMNAS.includes(b)) mapeoNorm[a] = b;        // a=origen, b=campo destino (esperado)
+        else if (COLUMNAS.includes(a)) mapeoNorm[b] = a;   // invertido: a=campo, b=origen
+      }
+      if (!Object.keys(mapeoNorm).length) {
+        throw new Error('La IA no pudo mapear ninguna columna a los campos KENET. Prueba con otro motor o revisa que el archivo tenga encabezados claros.');
+      }
       // Aplica el mapeo: arma filas nuevas con los nombres de campo canónicos.
       const nuevas = filasRaw.map(r => {
         const o = {};
-        for (const src in mapping) {
-          const dest = mapping[src];
-          if (dest && COLUMNAS.includes(dest)) o[dest] = r[src];
-        }
+        for (const src in mapeoNorm) { if (src in r) o[mapeoNorm[src]] = r[src]; }
         return o;
       });
       setFilas(nuevas);
       setValidaciones(nuevas.map((r, i) => validarFila(r, i)));
-      setMapeoIA(mapping);
+      setMapeoIA(mapeoNorm);
     } catch (e) {
       setErrorIA(e.message || 'No se pudo formatear con IA.');
     } finally {

@@ -1,5 +1,37 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (resumen del día) · Pablo + Randall + Claude · 17 commits — UX, Drive, permisos, Cobranza
+
+Día completo de trabajo en paralelo entre Pablo (UX/formularios, permisos, Drive) y Randall
+(Cobranza, morosos, docs). Se cerraron la integración de Google Drive para instaladores, la
+sección de Morosos en Cobranza, la eliminación de la vista Reagendados y varias mejoras de
+consistencia en formularios.
+
+**Commits del día (cronológico):**
+- `312686f` — Módulo de Cobranza: KPI efectividad, agenda confirmada, hitos por cobrar + roadmap.
+- `0fa67df` — Función `notificar` con proveedor Gmail como fallback (Resend bloqueado por DNS en Wix).
+- `28285d7` / `207f7a8` / `d411681` — Documentación: pendientes de Pablo y Randall formalizados en `PENDIENTES.md`, cfe_tipos marcada como hecha, nuevo pendiente WhatsApp Business API.
+- `101ac0d` — Política de morosidad y reparto de responsabilidades (Pablo/Randall vs TOKU) en `BASES/`.
+- `fc7cfeb` — Sección de Morosos en Cobranza (buckets 1/2/3/judicial), lista para que la pueble TOKU.
+- `4b27df5` — Vista instalador: sección de evidencias unificada + botón "↺ Reconectar Google".
+- `9775e86` — Fix: referencia incorrecta a `fotos.antes` en sección Cierre del reporte.
+- `b1e1ec6` — Drive: scope `drive` completo (necesario para carpetas compartidas) + subcarpeta por cliente.
+- `6977cbd` — Gestión de Usuarios: campo `drive_folder_id` para instaladores.
+- `78d2741` — Docs: cierre sesión Drive, pendiente alta de instaladores.
+- `126c4ea` — `api.js`: registra eliminación de proyectos en bitácora antes de borrar.
+- `d00b84a` — Permisos: `pm_domestico` puede crear/editar proyectos, cuadrillas y cortes.
+- `e7577a7` — Elimina vista Reagendados; fusiona reagenda (Factor + Motivo + Nota) en el modal de "Cambiar fecha".
+- `3c3abd1` — Formulario "Agendar instalación": numéricos sin negativos, kWp editable, placeholders en 0.
+- `0d6c1a6` — Modal "Editar proyecto": alineado al formulario de alta (mismo orden, sin Teléfono, Folio read-only, kWp editable).
+
+**Estado al cierre del día:** todo en `main`, build OK, Vercel redesplegando.
+
+**Pendiente operativo:**
+- Cada instalador debe pegar su `drive_folder_id` en Gestión de Usuarios y pulsar "↺ Reconectar Google".
+- API TOKU (prioridad 🔥) para poblar la sección de Morosos con datos reales.
+
+---
+
 ## 2026-07-01 (cont. 7) · Pablo + Claude · Integración Google Drive para evidencias de instaladores
 
 Se completó la integración de Google Drive para que los instaladores suban sus evidencias fotográficas

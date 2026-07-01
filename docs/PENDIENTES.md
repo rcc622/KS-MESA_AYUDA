@@ -33,10 +33,10 @@ Subir evidencias funciona. Pendiente operativo:
 - Cada instalador debe pulsar **"↺ Reconectar Google"** para obtener el scope `drive` completo.
 - Sin ese paso, las evidencias igual se guardan en Supabase Storage (funciona como respaldo).
 
-### 4. Resto de integraciones de API
+### ✅ 4. Resto de integraciones de API
 Google Calendar (ya operativo) y lo que surja quedan bajo su responsabilidad.
 
-### 4.1 Integración técnica de WhatsApp (Cloud API)
+### ✅ 4.1 Integración técnica de WhatsApp (Cloud API)
 Cuando Randall tenga el **número verificado + plantillas aprobadas + token** (ver pendiente
 6 de Randall), conectar la **WhatsApp Cloud API** para enviar avisos de Cobranza (y a futuro
 al cliente). Igual que `notificar` (correo): una Edge Function que manda el mensaje con el

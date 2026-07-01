@@ -1,5 +1,32 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (CIERRE) · Randall + Claude · Resumen del día + pendientes de despliegue
+
+Día grande. Todo el **código está en `main`** y compila; faltan solo **pasos de despliegue
+/ configuración** que Randall hará (algunos quedan para mañana). Respaldos del día:
+`backup/main-2026-07-01-*` (cfe-flow, drive).
+
+**✅ Listo en la plataforma (código en main):**
+- **Import inteligente afinado:** auto-mapeo de columnas, separa folio (MY→KENET, S→Odoo),
+  Saltillo se importa con folio KENET en blanco, ignora totales/vacías, columnas
+  Folio KENET/Odoo en preview. (Requiere `sql/migracion_folio_nullable.sql` — **ya corrido**.)
+- **Filtros estilo Excel + búsqueda** en Agenda y Usuarios; **borrado admin** en Agenda.
+- **Módulo CFE:** bandeja "instalaciones terminadas → por iniciar CFE" (flujo instalación→CFE).
+- **Correos a Cobranza** en 3 hitos (código + secretos Resend **ya puestos**).
+- **Google Drive Opción A** (evidencias vía OAuth, sin llave JSON) — código listo.
+
+**⏳ Pendientes de despliegue (Randall):**
+1. **Correos:** **desplegar la función `notificar`** (secretos ya están). Con eso ya envía.
+2. **Drive (mañana):** habilitar Drive API en Google Cloud + scope `drive.file` en consent;
+   redeploy `gcal-auth`; deploy `drive-upload`; reconectar Google con la cuenta dueña +
+   secreto `DRIVE_OWNER_EMAIL`. Detalle en `supabase/functions/drive-upload/README.md`.
+3. Coordinar con **Pablo**: se agregó el scope de Drive a `gcal-auth` (su Calendar sigue
+   igual; solo la cuenta dueña del Drive debe reconectar).
+
+**Próximo:** terminar despliegue de Drive; probar correos reales; seguir con lo que Randall priorice.
+
+---
+
 ## 2026-07-01 (cont. 3) · Randall + Claude · Evidencias a Google Drive (Opción A · OAuth) + correos Cobranza + flujo CFE
 
 Tres cosas en esta sesión: (1) los correos a **Cobranza** en 3 hitos (Resend, agnóstico),

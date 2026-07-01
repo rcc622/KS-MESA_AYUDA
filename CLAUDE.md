@@ -66,6 +66,7 @@ desplegada en **Vercel**. Contexto de negocio en **`BASES/`** (empieza por
 
 | Necesitas… | Ve a… |
 |---|---|
+| Onboarding de un dev nuevo (ej. Pablo) | `docs/ONBOARDING.md` |
 | Último estatus / qué se hizo | `docs/ESTATUS.md` |
 | Cómo correr/probar, qué está roto | `docs/GUIA_DEV.md` |
 | Contexto de negocio | `BASES/` (HANDOFF primero) |

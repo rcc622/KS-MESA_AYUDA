@@ -18,6 +18,7 @@ cortes de pago, bitácora antifraude y tablero de control. Web app **mobile-firs
 ├─ BASES/                 ← Documentos fuente de verdad del proyecto (contexto de negocio)
 ├─ Tools/                 ← Guías de herramientas de apoyo (opcionales, por dev)
 ├─ docs/                  ← Guía de devs + QA, último estatus y retro ejecutable
+│   ├─ ONBOARDING.md      ← 👋 arranque para devs nuevos (ej. Pablo)
 │   ├─ ESTATUS.md         ← 📌 bitácora "Último Estatus" (qué se hizo en cada sesión)
 │   ├─ GUIA_DEV.md        ← 🛠️ cómo correr/probar cada módulo y qué está roto
 │   └─ RETRO_v2_...md     ← retro ejecutable del módulo

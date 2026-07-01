@@ -31,10 +31,9 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   const [modalAgendar, setModalAgendar] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  const WATTS_POR_PANEL = 600;   // base fija para calcular el tamaño del sistema (kWp)
   const PROY_VACIO = {
     folio: '', folio_odoo: '', vendedor: '', cliente: '', correo_cliente: '', direccion: '', maps_url: '',
-    zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', notas: '',
+    zona: 'MTY', cuadrilla_id: '', fecha_agenda: '', paneles: '', kw: '', notas: '',
     panel_potencia_w: '', panel_marca: '',
     inversor_tipo: '', inversor_cantidad: '', inversor_capacidad_kw: '', inversor_marca: '',
   };
@@ -138,7 +137,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
         maps_url:     nuevoProy.maps_url || null,
         fecha_agenda: nuevoProy.fecha_agenda || null,
         paneles,
-        kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,   // auto: paneles × 600 W
+        kw: nuevoProy.kw ? parseFloat(nuevoProy.kw) : null,
         panel_potencia_w:      nuevoProy.panel_potencia_w ? parseInt(nuevoProy.panel_potencia_w) : null,
         panel_marca:           nuevoProy.panel_marca || null,
         inversor_tipo:         nuevoProy.inversor_tipo || null,
@@ -180,7 +179,6 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   if (loading) return <div className="page-body"><div className="empty-state"><div className="es-icon">⏳</div><p>Cargando proyectos…</p></div></div>;
   if (error)   return <div className="page-body"><div className="empty-state"><div className="es-icon">❌</div><p>Error: {error}</p><button className="btn btn-primary mt-16" onClick={cargar}>Reintentar</button></div></div>;
 
-  const kwpAuto = nuevoProy.paneles ? +((parseInt(nuevoProy.paneles) * WATTS_POR_PANEL) / 1000).toFixed(2) : '';
   const esAdmin    = usuarioActual?.rol === 'admin';
   const puedeCrear = ['admin', 'pm_domestico'].includes(usuarioActual?.rol);
 
@@ -344,13 +342,13 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
             </div>
             <div className="form-group">
               <label>Paneles</label>
-              <input type="number" placeholder="12" value={nuevoProy.paneles} onChange={e => setNuevoProy(p => ({ ...p, paneles: e.target.value }))} />
+              <input type="number" min="0" placeholder="0" value={nuevoProy.paneles} onChange={e => setNuevoProy(p => ({ ...p, paneles: e.target.value }))} />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>Potencia por panel (W)</label>
-              <input type="number" placeholder="600" value={nuevoProy.panel_potencia_w} onChange={e => setNuevoProy(p => ({ ...p, panel_potencia_w: e.target.value }))} />
+              <input type="number" min="0" placeholder="0" value={nuevoProy.panel_potencia_w} onChange={e => setNuevoProy(p => ({ ...p, panel_potencia_w: e.target.value }))} />
             </div>
             <div className="form-group">
               <label>Marca de panel</label>
@@ -359,8 +357,8 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Tamaño del sistema (kWp) <span className="text-gray text-xs">· automático · {WATTS_POR_PANEL} W/panel</span></label>
-              <input type="text" value={kwpAuto !== '' ? `${kwpAuto} kWp` : '—'} readOnly disabled />
+              <label>Tamaño del sistema (kWp)</label>
+              <input type="number" min="0" step="0.01" placeholder="0" value={nuevoProy.kw} onChange={e => setNuevoProy(p => ({ ...p, kw: e.target.value }))} />
             </div>
           </div>
 
@@ -377,13 +375,13 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
             </div>
             <div className="form-group">
               <label>Cantidad de inversores</label>
-              <input type="number" min="0" placeholder="1" value={nuevoProy.inversor_cantidad} onChange={e => setNuevoProy(p => ({ ...p, inversor_cantidad: e.target.value }))} />
+              <input type="number" min="0" placeholder="0" value={nuevoProy.inversor_cantidad} onChange={e => setNuevoProy(p => ({ ...p, inversor_cantidad: e.target.value }))} />
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
               <label>Capacidad del inversor (kW)</label>
-              <input type="number" step="0.1" placeholder="5.0" value={nuevoProy.inversor_capacidad_kw} onChange={e => setNuevoProy(p => ({ ...p, inversor_capacidad_kw: e.target.value }))} />
+              <input type="number" min="0" step="0.1" placeholder="0" value={nuevoProy.inversor_capacidad_kw} onChange={e => setNuevoProy(p => ({ ...p, inversor_capacidad_kw: e.target.value }))} />
             </div>
             <div className="form-group">
               <label>Marca de inversor</label>

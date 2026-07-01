@@ -18,7 +18,8 @@ desplegada en **Vercel**. Contexto de negocio en **`BASES/`** (empieza por
 
 ## 1. 🟢 AL INICIAR SESIÓN (obligatorio)
 
-1. **Lee `docs/ESTATUS.md`** (la entrada de hasta arriba = lo último que se hizo).
+1. **Lee `docs/ESTATUS.md`** (la entrada de hasta arriba = lo último que se hizo) y
+   **`docs/PENDIENTES.md`** (tablero de pendientes de Pablo y Randall).
 2. **Da un informe breve al developer** antes de empezar: en 3-5 bullets, dile
    *qué se movió en la última sesión, qué quedó pendiente y qué conviene probar*.
    Así Pablo (o quien sea) retoma sin perderse.
@@ -68,6 +69,7 @@ desplegada en **Vercel**. Contexto de negocio en **`BASES/`** (empieza por
 |---|---|
 | Onboarding de un dev nuevo (ej. Pablo) | `docs/ONBOARDING.md` |
 | Último estatus / qué se hizo | `docs/ESTATUS.md` |
+| Pendientes (Pablo / Randall) | `docs/PENDIENTES.md` |
 | Cómo correr/probar, qué está roto | `docs/GUIA_DEV.md` |
 | Contexto de negocio | `BASES/` (HANDOFF primero) |
 | Plan de IA / escalabilidad | `BASES/Roadmap_IA_y_Plataforma.md` |

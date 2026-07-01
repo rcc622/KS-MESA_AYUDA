@@ -1,5 +1,21 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 5) · Randall + Claude · Tablero de pendientes formalizado (Pablo / Randall)
+
+Se creó **`docs/PENDIENTES.md`** con los pendientes claros de cada quien (Pablo lee ese
+tablero + este estatus al iniciar su sesión). Pablo ya tiene acceso a Google Cloud
+(`ventasmty2@kenetsolar.com`); falta invitarlo a Supabase (Team) para secretos/deploys.
+
+**Pablo:** 🔥 API TOKU (prioridad) · correos Gmail · Drive · resto de APIs · subir carpetas
+de procesos (Words→markitdown, SVG directo) a `BASES/Procesos/`.
+**Randall:** documentar proceso de cobro · criterios de morosos (1·2·3) · probar Cobranza ·
+probar linkeo de data en tiempo real · seguimiento a Pablo · correr `migracion_cfe_tipos.sql`.
+
+Detalle completo y pasos en **`docs/PENDIENTES.md`**.
+
+---
+
+
 ## 2026-07-01 (cont. 4) · Randall + Claude · 💰 Módulo de Cobranza + reordenamiento de pendientes
 
 Creado el **módulo de Cobranza** — objetivo central del proyecto (subir la **efectividad de

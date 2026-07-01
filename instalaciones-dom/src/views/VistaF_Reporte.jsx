@@ -52,7 +52,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
   const [loading, setLoading] = useState(true);
   const [proyectoId, setProyectoId] = useState('');   // '' = vista de lista
   const [checks, setChecks] = useState({});
-  const [fotos, setFotos] = useState({ antes: [], durante: [], despues: [] });
+  const [fotos, setFotos] = useState([]);
   const [observaciones, setObservaciones] = useState('');
   const [firmaUrl, setFirmaUrl] = useState(null);
   const [nombreFirma, setNombreFirma] = useState('');
@@ -119,19 +119,19 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
   const checksPasados = CHECKLIST.filter((_, i) => checks[i]).length;
   const pct = Math.round((checksPasados / CHECKLIST.length) * 100);
 
-  const agregarFotos = (etapa, fileList) => {
+  const agregarFotos = (fileList) => {
     Array.from(fileList || []).forEach(f => {
       if (!f.type?.startsWith('image/')) return;
       const reader = new FileReader();
-      reader.onload = () => setFotos(prev => ({ ...prev, [etapa]: [...prev[etapa], { name: f.name, dataUrl: reader.result }] }));
+      reader.onload = () => setFotos(prev => [...prev, { name: f.name, dataUrl: reader.result }]);
       reader.readAsDataURL(f);
     });
   };
-  const quitarFoto = (etapa, idx) => setFotos(prev => ({ ...prev, [etapa]: prev[etapa].filter((_, i) => i !== idx) }));
+  const quitarFoto = (idx) => setFotos(prev => prev.filter((_, i) => i !== idx));
 
   const reiniciar = () => {
     setEnviado(false); setChecks({}); setFotos({ antes: [], durante: [], despues: [] });
-    setFirmaUrl(null); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist'); setRespaldoEv('');
+    setFirmaUrl(null); setNombreFirma(''); setObservaciones(''); setEtapaActiva('checklist'); setRespaldoEv(''); setFotos([]);
   };
 
   const abrirReporte = async (p) => {
@@ -173,11 +173,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
     doc.setFontSize(12); doc.setTextColor('#1F4E79'); doc.text('Conformidad del cliente', 40, y); y += 12;
     if (firmaUrl) { try { doc.addImage(firmaUrl, 'PNG', 48, y, 170, 66); } catch (e) { /* firma invalida */ } }
     doc.setFontSize(10); doc.setTextColor('#333333'); doc.text(`Firma: ${nombreFirma}`, 240, y + 36);
-    const todas = [
-      ...fotos.antes.map(f => ({ ...f, etapa: 'Antes' })),
-      ...fotos.durante.map(f => ({ ...f, etapa: 'Durante' })),
-      ...fotos.despues.map(f => ({ ...f, etapa: 'Resultado' })),
-    ];
+    const todas = fotos.map(f => ({ ...f, etapa: 'Evidencia' }));
     if (todas.length) {
       doc.addPage(); let py = 44; let px = 40; const imgW = 150; const imgH = 112; const gap = 16;
       doc.setFontSize(14); doc.setTextColor('#1F4E79'); doc.text('Evidencia fotografica', 40, py); py += 22;
@@ -213,7 +209,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
       await agregarBitacora({
         proyecto_id: proyectoId,
         tipo: 'cierre',
-        descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles. Checklist: ${pct}%. Fotos: ${fotos.antes.length + fotos.durante.length + fotos.despues.length}. Firma: ${nombreFirma}. Obs: ${observaciones || 'ninguna'}`,
+        descripcion: `Instalación completada. ${proyecto?.paneles ?? '—'} paneles. Checklist: ${pct}%. Fotos: ${fotos.length}. Firma: ${nombreFirma}. Obs: ${observaciones || 'ninguna'}`,
         usuario_id: usuarioActual?.id ?? null,
       });
       // Hito: instalación terminada → aviso a Cobranza (se puede cobrar enganche). Best-effort.
@@ -223,13 +219,11 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
       const ts = Date.now();
       try {
         let n = 0;
-        for (const [etapa, lista] of [['antes', fotos.antes], ['durante', fotos.durante], ['despues', fotos.despues]]) {
-          for (let i = 0; i < lista.length; i++) {
-            const blob = dataURLtoBlob(lista[i].dataUrl);
-            const ext = blob.type.includes('png') ? 'png' : 'jpg';
-            await subirEvidencia(`${folio}/${ts}/${etapa}-${i + 1}.${ext}`, blob);
-            n++;
-          }
+        for (let i = 0; i < fotos.length; i++) {
+          const blob = dataURLtoBlob(fotos[i].dataUrl);
+          const ext = blob.type.includes('png') ? 'png' : 'jpg';
+          await subirEvidencia(`${folio}/${ts}/foto-${i + 1}.${ext}`, blob);
+          n++;
         }
         await subirEvidencia(`${folio}/${ts}/reporte.pdf`, doc.output('blob'));
         setRespaldoEv(`☁️ ${n} foto(s) + PDF respaldados en la nube`);
@@ -239,11 +233,9 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
       // Copia también a Google Drive (Opción A · OAuth, best-effort, SIN bloquear el envío).
       const pdfDataUrl = doc.output('datauristring');
       (async () => {
-        for (const [etapa, lista] of [['antes', fotos.antes], ['durante', fotos.durante], ['despues', fotos.despues]]) {
-          for (let i = 0; i < lista.length; i++) {
-            const ext = (lista[i].dataUrl || '').includes('image/png') ? 'png' : 'jpg';
-            await subirEvidenciaDrive(`${folio} - ${etapa} - ${i + 1}.${ext}`, lista[i].dataUrl, folio);
-          }
+        for (let i = 0; i < fotos.length; i++) {
+          const ext = (fotos[i].dataUrl || '').includes('image/png') ? 'png' : 'jpg';
+          await subirEvidenciaDrive(`${folio} - foto-${i + 1}.${ext}`, fotos[i].dataUrl, folio);
         }
         await subirEvidenciaDrive(`${folio} - reporte.pdf`, pdfDataUrl, folio);
       })();
@@ -287,13 +279,14 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
           <div style={{ display: 'flex', gap: 8 }}>
             {esInstalador && (
               calConectado ? (
-                <span
-                  className="badge"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0FBF4', color: '#16A34A', border: '1px solid #BBF7D0', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}
-                  title="Tus instalaciones agendadas se sincronizan automáticamente a tu Google Calendar"
-                >
-                  ✅ Calendar conectado
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F0FBF4', color: '#16A34A', border: '1px solid #BBF7D0', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+                    ✅ Calendar conectado
+                  </span>
+                  <button className="btn btn-outline btn-sm" onClick={handleConectarCalendar} disabled={conectandoCal} title="Reconectar para actualizar permisos">
+                    {conectandoCal ? '⏳…' : '↺ Reconectar'}
+                  </button>
+                </div>
               ) : (
                 <button
                   className="btn btn-outline btn-sm"
@@ -408,7 +401,7 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
           <div className="tabs">
             {[
               { id: 'checklist', label: `✅ Checklist (${checksPasados}/${CHECKLIST.length})` },
-              { id: 'fotos',    label: `📸 Evidencia (${fotos.antes.length + fotos.durante.length + fotos.despues.length})` },
+              { id: 'fotos',    label: `📸 Evidencia (${fotos.length})` },
               { id: 'cierre',  label: '✍️ Cierre' },
             ].map(t => <button key={t.id} className={`tab${etapaActiva === t.id ? ' active' : ''}`} onClick={() => setEtapaActiva(t.id)}>{t.label}</button>)}
           </div>
@@ -435,33 +428,27 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
 
           {etapaActiva === 'fotos' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { key: 'antes',   label: 'Antes de la instalación', icon: '🏠' },
-                { key: 'durante', label: 'Durante la instalación',  icon: '🔧' },
-                { key: 'despues', label: 'Resultado final',          icon: '☀️' },
-              ].map(etapa => (
-                <div key={etapa.key} className="card">
-                  <div className="card-header"><h3>{etapa.icon} {etapa.label}</h3><span className="text-sm text-gray">{fotos[etapa.key].length} foto(s)</span></div>
-                  <div className="card-body">
-                    {fotos[etapa.key].length > 0 && (
-                      <div className="foto-preview mb-12">
-                        {fotos[etapa.key].map((foto, i) => (
-                          <div key={i} className="foto-thumb-wrap" onClick={() => quitarFoto(etapa.key, i)} title="Tocar para quitar">
-                            <img src={foto.dataUrl} alt="" className="foto-thumb-img" />
-                            <span className="foto-thumb-x">✕</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <label className="upload-box" style={{ cursor: 'pointer' }}>
-                      <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => { agregarFotos(etapa.key, e.target.files); e.target.value = ''; }} />
-                      <div className="ub-icon">📷</div>
-                      <div className="text-sm fw-600">Tomar foto / Seleccionar</div>
-                      <div className="text-xs text-gray mt-4">Cámara o galería · varias a la vez</div>
-                    </label>
-                  </div>
+              <div className="card">
+                <div className="card-header"><h3>📸 Evidencia fotográfica</h3><span className="text-sm text-gray">{fotos.length} foto(s)</span></div>
+                <div className="card-body">
+                  {fotos.length > 0 && (
+                    <div className="foto-preview mb-12">
+                      {fotos.map((foto, i) => (
+                        <div key={i} className="foto-thumb-wrap" onClick={() => quitarFoto(i)} title="Tocar para quitar">
+                          <img src={foto.dataUrl} alt="" className="foto-thumb-img" />
+                          <span className="foto-thumb-x">✕</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="upload-box" style={{ cursor: 'pointer' }}>
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => { agregarFotos(e.target.files); e.target.value = ''; }} />
+                    <div className="ub-icon">📷</div>
+                    <div className="text-sm fw-600">Tomar foto / Seleccionar</div>
+                    <div className="text-xs text-gray mt-4">Cámara o galería · varias a la vez</div>
+                  </label>
                 </div>
-              ))}
+              </div>
               <div className="form-group">
                 <label>Observaciones adicionales</label>
                 <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} placeholder="Condiciones del techo, hallazgos, notas…" rows={3} />

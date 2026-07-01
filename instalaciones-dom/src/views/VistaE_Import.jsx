@@ -251,6 +251,12 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
       const nuevas = filasRaw.map(r => {
         const o = {};
         for (const src in mapeoNorm) { if (src in r) o[mapeoNorm[src]] = r[src]; }
+        // Separa el folio compuesto igual que al cargar: MY→folio KENET, S→folio Odoo.
+        if (o.folio) {
+          const { folioK, folioO } = separarFolios(o.folio);
+          o.folio = folioK;
+          if (folioO && !sanitizar(o.folio_odoo)) o.folio_odoo = folioO;
+        }
         return o;
       });
       setFilas(nuevas);
@@ -414,14 +420,15 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
               {filas.length > 0 && (
                 <div className="table-wrap" style={{ marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
                   <table>
-                    <thead><tr><th>#</th><th>folio</th><th>cliente</th><th>zona</th><th>paneles</th><th>Estado</th></tr></thead>
+                    <thead><tr><th>#</th><th>Folio KENET</th><th>Folio Odoo</th><th>Cliente</th><th>Zona</th><th>Paneles</th><th>Estado</th></tr></thead>
                     <tbody>
                       {filas.slice(0, 20).map((r, i) => {
                         const v = validaciones[i];
                         return (
                           <tr key={i} style={{ background: v?.valida ? 'transparent' : '#FFF4F4' }}>
                             <td style={{ fontSize: 11, color: 'var(--gris-secundario)' }}>{i + 1}</td>
-                            <td style={{ fontSize: 12 }}>{r.folio}</td>
+                            <td style={{ fontSize: 12, fontWeight: 600 }}>{r.folio}</td>
+                            <td style={{ fontSize: 12, color: 'var(--gris-secundario)' }}>{r.folio_odoo || '—'}</td>
                             <td style={{ fontSize: 12 }}>{r.cliente}</td>
                             <td style={{ fontSize: 12 }}>{r.zona}</td>
                             <td style={{ fontSize: 12 }}>{r.paneles}</td>

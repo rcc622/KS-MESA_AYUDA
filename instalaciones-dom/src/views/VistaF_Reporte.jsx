@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { getProyectos, actualizarProyecto, agregarBitacora, mensajeError, subirEvidencia } from '../lib/api';
 import { notificarCobranza } from '../lib/notificaciones';
+import { subirEvidenciaDrive } from '../lib/drive';
 import { conectarGoogleCalendar } from '../lib/gcal';
 import EstatusBadge from '../components/EstatusBadge';
 import SLABadge from '../components/SLABadge';
@@ -235,6 +236,17 @@ export default function VistaF_Reporte({ usuarioActual, refrescarUsuarioActual }
       } catch (e) {
         setRespaldoEv('⚠️ Evidencias no respaldadas — crea el bucket "evidencias" en Supabase Storage');
       }
+      // Copia también a Google Drive (Opción A · OAuth, best-effort, SIN bloquear el envío).
+      const pdfDataUrl = doc.output('datauristring');
+      (async () => {
+        for (const [etapa, lista] of [['antes', fotos.antes], ['durante', fotos.durante], ['despues', fotos.despues]]) {
+          for (let i = 0; i < lista.length; i++) {
+            const ext = (lista[i].dataUrl || '').includes('image/png') ? 'png' : 'jpg';
+            await subirEvidenciaDrive(`${folio} - ${etapa} - ${i + 1}.${ext}`, lista[i].dataUrl, folio);
+          }
+        }
+        await subirEvidenciaDrive(`${folio} - reporte.pdf`, pdfDataUrl, folio);
+      })();
       await compartirPDF(doc);
       setEnviado(true);
     } catch (e) {

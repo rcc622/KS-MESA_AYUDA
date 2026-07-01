@@ -23,7 +23,10 @@ const CORS = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
 
-const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+// Calendar (eventos) + Drive (solo archivos creados por la app, permiso mínimo para
+// subir evidencias). Al agregar el scope de Drive, quien quiera subir evidencias a Drive
+// debe RE-conectar su Google (los tokens viejos solo tenían Calendar).
+const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
 const REDIRECT_URI = `${Deno.env.get('SUPABASE_URL')}/functions/v1/gcal-auth`;
 
 function jsonResp(body: unknown, status = 200) {

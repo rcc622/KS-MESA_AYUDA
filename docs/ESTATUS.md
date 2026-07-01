@@ -1,5 +1,39 @@
 # 📌 Último Estatus — Bitácora de desarrollo
 
+## 2026-07-01 (cont. 3) · Randall + Claude · Evidencias a Google Drive (Opción A · OAuth) + correos Cobranza + flujo CFE
+
+Tres cosas en esta sesión: (1) los correos a **Cobranza** en 3 hitos (Resend, agnóstico),
+(2) las instalaciones terminadas **se reflejan solas en CFE** (bandeja "por iniciar"), y
+(3) **Google Drive Opción A**: subir evidencias a Drive **sin llave JSON** (esa la bloquea
+una política de la organización) reutilizando el **OAuth de Calendar** de Pablo + scope
+`drive.file`.
+
+**Qué se movió:**
+- `supabase/functions/notificar/`: correo a Cobranza (instalacion_terminada / cfe_iniciado
+  / medidor_instalado). Secretos: RESEND_API_KEY, COBRANZA_EMAILS, NOTIFY_FROM.
+- `VistaCFE`: bandeja "🔨 Instalaciones terminadas · por iniciar CFE" + botón iniciar.
+- `supabase/functions/gcal-auth`: **SCOPES ahora incluye `drive.file`** (además de Calendar).
+- `supabase/functions/drive-upload/`: sube archivos a Drive con el token OAuth de la cuenta
+  dueña (`DRIVE_OWNER_EMAIL`) a la carpeta "Evidencias KENET Solar". `lib/drive.js` +
+  cableado en `VistaF_Reporte` (best-effort, junto al respaldo en Supabase Storage).
+
+**⚠️ Coordinación con Pablo (importante):**
+- Modifiqué `gcal-auth` (agregué el scope de Drive). **Las conexiones de Calendar
+  existentes SIGUEN funcionando** (sus tokens no cambian). Solo la cuenta que sea **dueña
+  del Drive** debe **RE-conectar** su Google para que su token incluya Drive.
+
+**Pendiente para activar Drive (Randall):**
+1. Google Cloud: habilitar **Google Drive API** + agregar scope `drive.file` a la pantalla
+   de consentimiento OAuth.
+2. Redesplegar `gcal-auth` y desplegar `drive-upload`.
+3. Reconectar Google con la cuenta dueña + secreto `DRIVE_OWNER_EMAIL` (y opcional
+   `DRIVE_FOLDER_ID`). Detalle en `supabase/functions/drive-upload/README.md`.
+
+**Pendiente correos:** desplegar `notificar` + secretos Resend (README de esa función).
+
+---
+
+
 ## 2026-07-01 (cont. 2) · Randall + Claude · Filtros estilo Excel + búsqueda + borrado admin en Agenda
 
 En la vista de Agenda se agregaron **filtros por columna estilo Excel** (ordenar A→Z/Z→A,

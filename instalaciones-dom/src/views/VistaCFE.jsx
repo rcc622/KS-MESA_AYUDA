@@ -85,7 +85,7 @@ export default function VistaCFE({ usuarioActual }) {
 
   // Marca que llegó el medidor bidireccional → alerta a Cobranza ("ya se puede cobrar").
   const marcarMedidor = async (t) => {
-    if (!confirm('¿Confirmas que el medidor bidireccional ya LLEGÓ? Esto avisa a Cobranza que ya se puede cobrar.')) return;
+    if (!confirm('¿Confirmas que el medidor bidireccional ya se INSTALÓ? Se marcará como CFE concluido y se notificará automáticamente a Cobranza (ya se puede cobrar).')) return;
     try {
       await actualizarTramiteCFE(t.id, {
         medidor_bidireccional_llego: true,
@@ -216,7 +216,7 @@ export default function VistaCFE({ usuarioActual }) {
                   <div className="text-xs text-gray" style={{ marginTop: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     {dias != null && <span>⏱️ {dias} día(s) en trámite</span>}
                     {t.responsable?.nombre && <span>👤 {t.responsable.nombre}</span>}
-                    {t.cobranza_alertada && <span style={{ color: 'var(--verde)', fontWeight: 700 }}>✅ Cobranza avisada</span>}
+                    {t.cobranza_alertada && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: '#DCFCE7', color: '#166534' }}>✅ Cobranza notificada</span>}
                   </div>
 
                   {esGestor && (
@@ -225,7 +225,7 @@ export default function VistaCFE({ usuarioActual }) {
                         {ESTADOS.map(es => <option key={es.v} value={es.v}>{es.l}</option>)}
                       </select>
                       {t.tipo === 'medidor_bidireccional' && !t.medidor_bidireccional_llego && (
-                        <button className="btn btn-green btn-sm" onClick={() => marcarMedidor(t)}>🔔 Medidor llegó → avisar a Cobranza</button>
+                        <button className="btn btn-green btn-sm" onClick={() => marcarMedidor(t)}>🔌 Marcar medidor instalado</button>
                       )}
                     </div>
                   )}

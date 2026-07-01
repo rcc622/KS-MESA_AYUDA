@@ -27,54 +27,81 @@ const sanitizar = (v, max = 500) => {
   const s = String(v).replace(/^[=+\-@\t\r]+/, '').trim().slice(0, max);
   return s === '' ? null : s;
 };
+const MESES = { ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6, jul: 7, ago: 8, sep: 9, set: 9, oct: 10, nov: 11, dic: 12 };
 const fechaISO = (v) => {
   if (v === '' || v == null) return null;
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return isNaN(v) ? null : v.toISOString().slice(0, 10);
   const s = String(v).trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})$/); // DD/MM/YYYY
-  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  let m = s.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/); // YYYY/MM/DD
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/); // DD/MM/YY(YY)
+  if (m) { let y = m[3]; if (y.length === 2) y = '20' + y; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  m = s.match(/^(\d{1,2})[\-\s/]+([a-záéíóú]{3,})[\-\s/]+(\d{2,4})$/i); // DD-mmm-YYYY (español)
+  if (m) {
+    const mesKey = m[2].slice(0, 3).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const mes = MESES[mesKey];
+    if (mes) { let y = m[3]; if (y.length === 2) y = '20' + y; return `${y}-${String(mes).padStart(2, '0')}-${m[1].padStart(2, '0')}`; }
+  }
   const d = new Date(s);
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 };
 
+// Traduce nombres/variantes de ciudad al código de zona de KENET (MTY/SLT/TRC/MVA).
+const ZONA_ALIAS = {
+  monterrey: 'MTY', mty: 'MTY',
+  saltillo: 'SLT', slt: 'SLT',
+  torreon: 'TRC', trc: 'TRC',
+  monclova: 'MVA', mva: 'MVA',
+};
+const normalizarZona = (v) => {
+  const s = sanitizar(v);
+  if (!s) return null;
+  const key = s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  return ZONA_ALIAS[key] || (ZONAS.includes(s.toUpperCase()) ? s.toUpperCase() : null);
+};
+const numEntre = (v, min, max) => { const n = parseInt(v, 10); return (!isNaN(n) && n >= min && n <= max) ? n : null; };
+
+// Solo folio + cliente son OBLIGATORIOS (bloquean la fila). Lo demás, si viene raro,
+// es un AVISO: ese dato se omite pero la fila SÍ se importa.
 const validarFila = (r, idx) => {
-  const errores = [];
+  const errores = [];  // bloquean la fila
+  const avisos = [];   // no bloquean: el dato opcional se omite/recorta
   if (!sanitizar(r.folio)) errores.push('folio vacío');
   else if (String(r.folio).length > 100) errores.push('folio excede 100 caracteres');
   if (!sanitizar(r.cliente)) errores.push('cliente vacío');
   else if (String(r.cliente).length > 255) errores.push('cliente excede 255 caracteres');
-  const zona = sanitizar(r.zona)?.toUpperCase();
-  if (zona && !ZONAS.includes(zona)) errores.push(`zona inválida (válidas: ${ZONAS.join(', ')})`);
-  if (r.paneles) { const n = parseInt(r.paneles); if (isNaN(n) || n < 1 || n > 999) errores.push('paneles 1–999'); }
-  if (r.inversor_cantidad) { const n = parseInt(r.inversor_cantidad); if (isNaN(n) || n < 0 || n > 99) errores.push('cantidad de inversor inválida'); }
+  if (r.zona && !normalizarZona(r.zona)) avisos.push(`zona "${sanitizar(r.zona)}" no reconocida (se omite)`);
+  if (r.paneles && numEntre(r.paneles, 1, 999) == null) avisos.push('paneles fuera de 1–999 (se omite)');
+  if (r.inversor_cantidad && numEntre(r.inversor_cantidad, 0, 99) == null) avisos.push('cantidad de inversor inválida (se omite)');
   const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
-  if (tipo && !['inversor', 'microinversor'].includes(tipo)) errores.push("inversor_tipo: 'inversor' o 'microinversor'");
-  if (r.fecha_agenda && !fechaISO(r.fecha_agenda)) errores.push('fecha_agenda inválida (usa YYYY-MM-DD)');
-  if (r.direccion && String(r.direccion).length > 500) errores.push('direccion excede 500 caracteres');
-  if (r.notas && String(r.notas).length > 1000) errores.push('notas excede 1000 caracteres');
-  return { fila: idx + 1, errores, valida: errores.length === 0 };
+  if (tipo && !['inversor', 'microinversor'].includes(tipo)) avisos.push(`inversor tipo "${sanitizar(r.inversor_tipo)}" no reconocido (se omite)`);
+  if (r.fecha_agenda && !fechaISO(r.fecha_agenda)) avisos.push('fecha no reconocida (se omite)');
+  if (r.direccion && String(r.direccion).length > 500) avisos.push('dirección recortada a 500');
+  if (r.notas && String(r.notas).length > 1000) avisos.push('notas recortadas a 1000');
+  return { fila: idx + 1, errores, avisos, valida: errores.length === 0 };
 };
 
 const mapear = (r) => {
-  const paneles = r.paneles ? parseInt(r.paneles) : null;
-  const zona = sanitizar(r.zona)?.toUpperCase();
+  const paneles = numEntre(r.paneles, 1, 999);
+  const zona = normalizarZona(r.zona);
   const tipo = sanitizar(r.inversor_tipo)?.toLowerCase();
+  const capKw = r.inversor_capacidad_kw != null && r.inversor_capacidad_kw !== '' ? parseFloat(r.inversor_capacidad_kw) : null;
   return {
     folio: sanitizar(r.folio, 100),
     folio_odoo: sanitizar(r.folio_odoo, 100),
     cliente: sanitizar(r.cliente, 255),
     telefono: sanitizar(r.telefono, 50),
     direccion: sanitizar(r.direccion, 500),
-    zona: ZONAS.includes(zona) ? zona : null,
+    zona,
     fecha_agenda: fechaISO(r.fecha_agenda),
     paneles,
     kw: paneles ? (paneles * WATTS_POR_PANEL) / 1000 : null,
-    panel_potencia_w: r.panel_potencia_w ? parseInt(r.panel_potencia_w) : null,
+    panel_potencia_w: numEntre(r.panel_potencia_w, 1, 100000),
     panel_marca: sanitizar(r.panel_marca, 100),
     inversor_tipo: tipo === 'microinversor' ? 'microinversor' : (tipo === 'inversor' ? 'inversor' : null),
-    inversor_cantidad: r.inversor_cantidad ? parseInt(r.inversor_cantidad) : null,
-    inversor_capacidad_kw: r.inversor_capacidad_kw ? parseFloat(r.inversor_capacidad_kw) : null,
+    inversor_cantidad: numEntre(r.inversor_cantidad, 0, 99),
+    inversor_capacidad_kw: (capKw != null && !isNaN(capKw)) ? capKw : null,
     inversor_marca: sanitizar(r.inversor_marca, 100),
     notas: sanitizar(r.notas, 1000),
     estatus: 'agendado',
@@ -171,6 +198,7 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
 
   const filasValidas = validaciones.filter(v => v.valida).length;
   const filasConError = validaciones.filter(v => !v.valida).length;
+  const filasConAviso = validaciones.filter(v => v.valida && v.avisos?.length).length;
 
   const handleImportar = async () => {
     setImportando(true);
@@ -292,10 +320,21 @@ export default function VistaE_Import({ usuarioActual, setVista }) {
 
               {filasConError > 0 && (
                 <div style={{ background: '#FFF4F4', border: '1px solid #FCA5A5', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán:</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>Errores detectados — estas filas no se importarán (falta folio o cliente):</div>
                   {validaciones.filter(v => !v.valida).slice(0, 15).map(v => (
                     <div key={v.fila} style={{ fontSize: 12, color: '#DC2626', marginBottom: 2 }}>Fila {v.fila}: {v.errores.join(' · ')}</div>
                   ))}
+                </div>
+              )}
+
+              {filasConAviso > 0 && (
+                <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>
+                    ⚠️ {filasConAviso} fila(s) se importan con avisos: algún dato opcional no se reconoció y se omitió (folio y cliente sí entran).
+                  </div>
+                  <div style={{ fontSize: 11, color: '#92400E' }}>
+                    Ej.: {[...new Set(validaciones.filter(v => v.valida && v.avisos?.length).flatMap(v => v.avisos))].slice(0, 4).join(' · ')}
+                  </div>
                 </div>
               )}
 

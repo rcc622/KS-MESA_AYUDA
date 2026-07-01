@@ -15,7 +15,7 @@ const KPIS = [
   { value: 'sin_correcciones',       label: 'Sin correcciones' },
 ];
 
-export default function VistaL_Cuadrillas() {
+export default function VistaL_Cuadrillas({ usuarioActual }) {
   const [cuadrillas, setCuadrillas] = useState([]);
   const [pms, setPms] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
@@ -100,6 +100,8 @@ export default function VistaL_Cuadrillas() {
     await eliminarRegla(id);
     cargar();
   };
+
+  const esAdmin = usuarioActual?.rol === 'admin';
 
   if (loading) return <div className="page-body"><div className="empty-state"><div className="es-icon">⏳</div><p>Cargando…</p></div></div>;
 
@@ -205,7 +207,7 @@ export default function VistaL_Cuadrillas() {
                           <span className="badge" style={{ background: r.consecuencia === 'descuento_pago' ? '#FEE2E2' : '#EDE9FE', color: r.consecuencia === 'descuento_pago' ? 'var(--rojo)' : 'var(--morado)', fontSize: 10 }}>
                             {r.consecuencia === 'descuento_pago' ? '$ Descuento' : 'KPI Bono'}
                           </span>
-                          <button onClick={() => handleEliminarRegla(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 14 }}>✕</button>
+                          {esAdmin && <button onClick={() => handleEliminarRegla(r.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 14 }}>✕</button>}
                         </div>
                       ))}
                     </div>

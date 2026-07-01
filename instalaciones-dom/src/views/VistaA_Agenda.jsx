@@ -181,7 +181,8 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
   if (error)   return <div className="page-body"><div className="empty-state"><div className="es-icon">❌</div><p>Error: {error}</p><button className="btn btn-primary mt-16" onClick={cargar}>Reintentar</button></div></div>;
 
   const kwpAuto = nuevoProy.paneles ? +((parseInt(nuevoProy.paneles) * WATTS_POR_PANEL) / 1000).toFixed(2) : '';
-  const esAdmin = usuarioActual?.rol === 'admin';
+  const esAdmin    = usuarioActual?.rol === 'admin';
+  const puedeCrear = ['admin', 'pm_domestico'].includes(usuarioActual?.rol);
 
   return (
     <>
@@ -190,7 +191,7 @@ export default function VistaA_Agenda({ setVista, setProyectoSeleccionado, usuar
           <h2>📅 Agenda e Instalaciones</h2>
           <div className="sub">Proyectos activos · SLA máx. 18 días</div>
         </div>
-        {esAdmin && (
+        {puedeCrear && (
           <button className="btn btn-ambar" onClick={() => setModalAgendar(true)}>
             + Agendar instalación
           </button>

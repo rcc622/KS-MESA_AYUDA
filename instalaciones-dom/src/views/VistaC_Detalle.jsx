@@ -39,7 +39,8 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
   const [cuadrillas, setCuadrillas] = useState([]);
   const [modalEditar, setModalEditar] = useState(false);
   const [formEdit, setFormEdit] = useState(null);
-  const esAdmin = usuarioActual?.rol === 'admin';
+  const esAdmin     = usuarioActual?.rol === 'admin';
+  const puedeEditar = ['admin', 'pm_domestico'].includes(usuarioActual?.rol);
 
   const cargarBitacora = useCallback(async () => {
     if (!proyecto) return;
@@ -172,7 +173,7 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
         inversor_marca: formEdit.inversor_marca || null,
         notas: formEdit.notas || null,
       });
-      await agregarBitacora({ proyecto_id: proyecto.id, tipo: 'nota', descripcion: 'Proyecto editado por admin (datos / equipo).', usuario_id: usuarioActual?.id ?? null });
+      await agregarBitacora({ proyecto_id: proyecto.id, tipo: 'nota', descripcion: 'Proyecto editado (datos / equipo).', usuario_id: usuarioActual?.id ?? null });
       await refrescar();
       cargarBitacora();
       setModalEditar(false);
@@ -356,10 +357,10 @@ export default function VistaC_Detalle({ proyecto, setVista, setProyectoSeleccio
             <div className="card">
               <div className="card-header"><h3>Acciones rápidas</h3></div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {esAdmin && (
+                {puedeEditar && (
                   <button className="btn btn-primary w-full" onClick={abrirEditar}>✏️ Editar proyecto</button>
                 )}
-                {esAdmin && (
+                {puedeEditar && (
                   <button className="btn btn-ambar w-full" onClick={() => { setFechaAgenda(fechaMostrada || ''); setModalFecha(true); }}>
                     📅 {fechaMostrada ? 'Cambiar fecha de agenda' : 'Agendar fecha'}
                   </button>

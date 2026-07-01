@@ -179,8 +179,8 @@ export default function App() {
       case 'archivo':     return <VistaArchivo         {...props} />;
       case 'movimientos': return <VistaLog />;
       case 'asistente':   return <VistaAsistente usuarioActual={usuarioActual} />;
-      case 'cortes':      return <VistaI_Cortes />;
-      case 'cuadrillas':  return <VistaL_Cuadrillas />;
+      case 'cortes':      return <VistaI_Cortes usuarioActual={usuarioActual} />;
+      case 'cuadrillas':  return <VistaL_Cuadrillas usuarioActual={usuarioActual} />;
       case 'usuarios':    return <VistaG_Usuarios usuarioActual={usuarioActual} />;
       default: return null;
     }

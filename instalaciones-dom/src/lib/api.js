@@ -178,7 +178,7 @@ export async function actualizarCuadrilla(id, payload) {
 
 // ── REGLAS KPI ───────────────────────────────────────────────
 export async function crearRegla(payload) {
-  requireRol('admin');
+  requireRol('admin', 'pm_domestico');
   const { data, error } = await supabase.from('reglas_cuadrilla').insert(payload).select().single();
   if (error) throw error;
   return data;
